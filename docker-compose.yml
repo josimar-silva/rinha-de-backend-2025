@@ -20,6 +20,7 @@ services:
   nginx:
     image: nginx:latest
     hostname: nginx
+    container_name: rinha-nginx
     profiles:
       - prod
     depends_on:
@@ -42,6 +43,7 @@ services:
     <<: *backend-template
     image: ghcr.io/josimar-silva/rinha-de-backend-2025:latest
     hostname: backend-01
+    container_name: rinha-backend-01
     profiles:
       - prod
 
@@ -49,12 +51,14 @@ services:
     <<: *backend-template
     image: ghcr.io/josimar-silva/rinha-de-backend-2025:latest
     hostname: backend-02
+    container_name: rinha-backend-02
     profiles:
       - prod
 
   redis:
     image: redis:8.0.3-alpine
     hostname: redis
+    container_name: rinha-redis
     command: redis-server --save "" --appendonly no --maxclients 20000
     ports:
       - "6379:6379"
