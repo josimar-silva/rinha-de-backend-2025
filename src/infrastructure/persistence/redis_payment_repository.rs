@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use log::{error, info};
 use redis::{AsyncCommands, Client, Script};
 use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
@@ -203,21 +204,15 @@ impl PaymentRepository for RedisPaymentRepository {
 			.await
 			.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send>)?;
 
-		let keys: Vec<String> = con
-			.keys("payment_summary:*")
-			.await
-			.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send>)?;
-
-		let _: () = con
-			.del(keys)
-			.await
-			.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send>)?;
-
-		let _: () = con
-			.del(PROCESSED_PAYMENTS_SET_KEY)
-			.await
-			.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send>)?;
-
-		Ok(())
+		match redis::AsyncCommands::flushdb::<String>(&mut con).await {
+			Ok(_) => {
+				info!("Redis database cleared successfully.");
+				Ok(())
+			}
+			Err(e) => {
+				error!("Redis database cleared failed: {e}");
+				Err(Box::new(e) as Box<dyn std::error::Error + Send>)
+			}
+		}
 	}
 }
