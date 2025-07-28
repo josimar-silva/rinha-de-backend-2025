@@ -9,7 +9,7 @@ x-backend-template: &backend-template
     - APP_DEFAULT_PAYMENT_PROCESSOR_URL=http://payment-processor-default:8080
     - APP_FALLBACK_PAYMENT_PROCESSOR_URL=http://payment-processor-fallback:8080
     - APP_REDIS_URL=redis://redis:6379
-    - APP_SERVER_KEEPALIVE=200
+    - APP_SERVER_KEEPALIVE=500
     - APP_REPORT_URL=/app/reports
   deploy:
     resources:
