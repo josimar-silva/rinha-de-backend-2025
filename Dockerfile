@@ -16,7 +16,7 @@ ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
 RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
 
-RUN RUSTFLAGS="-C target-cpu=native" cargo build --release --locked --no-default-features
+RUN cargo build --release --locked --no-default-features
 
 FROM prod_builder AS perf_builder
 
