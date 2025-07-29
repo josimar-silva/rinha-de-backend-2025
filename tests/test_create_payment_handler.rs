@@ -15,7 +15,7 @@ use crate::support::redis_container::get_test_redis_client;
 async fn test_payments_post_returns_success() {
 	let redis_container = get_test_redis_client().await;
 	let redis_client = redis_container.client.clone();
-	let payment_queue = PaymentQueue::new(redis_client.clone());
+	let payment_queue = PaymentQueue::new(redis_client.clone()).await;
 	let create_payment_use_case = CreatePaymentUseCase::new(payment_queue.clone());
 
 	let app = test::init_service(
@@ -52,7 +52,7 @@ async fn test_payments_post_returns_success() {
 async fn test_payments_post_redis_failure() {
 	let redis_container = get_test_redis_client().await;
 	let redis_client = redis_container.client.clone();
-	let payment_queue = PaymentQueue::new(redis_client.clone());
+	let payment_queue = PaymentQueue::new(redis_client.clone()).await;
 	let create_payment_use_case = CreatePaymentUseCase::new(payment_queue.clone());
 
 	let app = test::init_service(

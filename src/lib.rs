@@ -43,7 +43,7 @@ pub async fn run(config: Arc<Config>) -> std::io::Result<()> {
 	));
 
 	info!("Starting payment processing worker...");
-	let payment_queue = PaymentQueue::new(redis_client.clone());
+	let payment_queue = PaymentQueue::new(redis_client.clone()).await;
 	let payment_repo = RedisPaymentRepository::new(redis_client.clone());
 
 	let process_payment_use_case =

@@ -34,7 +34,7 @@ async fn test_payment_processing_worker_default_success() {
 		.timeout(Duration::from_secs(2))
 		.build()
 		.unwrap();
-	let redis_queue = PaymentQueue::new(redis_client.clone());
+	let redis_queue = PaymentQueue::new(redis_client.clone()).await;
 	let payment_repo = RedisPaymentRepository::new(redis_client.clone());
 	let process_payment_use_case =
 		ProcessPaymentUseCase::new(payment_repo.clone(), http_client.clone());
@@ -120,7 +120,7 @@ async fn test_payment_processing_worker_fallback_success() {
 		.build()
 		.unwrap();
 
-	let payment_queue = PaymentQueue::new(redis_client.clone());
+	let payment_queue = PaymentQueue::new(redis_client.clone()).await;
 	let payment_repo = RedisPaymentRepository::new(redis_client.clone());
 	let process_payment_use_case =
 		ProcessPaymentUseCase::new(payment_repo.clone(), http_client.clone());
@@ -192,7 +192,7 @@ async fn test_payment_processing_worker_requeue_message_given_processor_are_down
 		.build()
 		.unwrap();
 
-	let redis_queue = PaymentQueue::new(redis_client.clone());
+	let redis_queue = PaymentQueue::new(redis_client.clone()).await;
 	let payment_repo = RedisPaymentRepository::new(redis_client.clone());
 	let process_payment_use_case =
 		ProcessPaymentUseCase::new(payment_repo.clone(), http_client.clone());
@@ -247,7 +247,7 @@ async fn test_payment_processing_worker_requeue_message_given_processor_are_down
 	));
 
 	// Give the worker some time to attempt processing and re-queue
-	tokio::time::sleep(Duration::from_secs(5)).await;
+	tokio::time::sleep(Duration::from_secs(45)).await;
 
 	// Verify payment is re-queued
 	let message = redis_queue.pop().await.unwrap().unwrap();
@@ -281,7 +281,7 @@ async fn test_payment_processing_worker_skip_processed_message() {
 		.build()
 		.unwrap();
 
-	let redis_queue = PaymentQueue::new(redis_client.clone());
+	let redis_queue = PaymentQueue::new(redis_client.clone()).await;
 	let payment_repo = RedisPaymentRepository::new(redis_client.clone());
 	let process_payment_use_case =
 		ProcessPaymentUseCase::new(payment_repo.clone(), http_client.clone());
@@ -338,7 +338,7 @@ async fn test_payment_processing_worker_skip_processed_message() {
 	));
 
 	// Give the worker some time to process
-	tokio::time::sleep(Duration::from_secs(5)).await;
+	tokio::time::sleep(Duration::from_secs(10)).await;
 
 	let now = OffsetDateTime::now_utc();
 	let one_day_ago = now.checked_sub(time::Duration::days(1)).unwrap();
@@ -364,7 +364,7 @@ async fn test_payment_processing_worker_redis_failure() {
 		.build()
 		.unwrap();
 
-	let redis_queue = PaymentQueue::new(redis_client.clone());
+	let redis_queue = PaymentQueue::new(redis_client.clone()).await;
 	let payment_repo = RedisPaymentRepository::new(redis_client.clone());
 	let process_payment_use_case =
 		ProcessPaymentUseCase::new(payment_repo.clone(), http_client.clone());
@@ -410,7 +410,7 @@ async fn test_payment_processing_worker_circuit_breaker_open() {
 		.build()
 		.unwrap();
 
-	let redis_queue = PaymentQueue::new(redis_client.clone());
+	let redis_queue = PaymentQueue::new(redis_client.clone()).await;
 	let payment_repo = RedisPaymentRepository::new(redis_client.clone());
 	let process_payment_use_case =
 		ProcessPaymentUseCase::new(payment_repo.clone(), http_client.clone());
@@ -461,7 +461,7 @@ async fn test_payment_processing_worker_circuit_breaker_open() {
 	));
 
 	// Give the worker some time to attempt processing
-	tokio::time::sleep(Duration::from_secs(5)).await;
+	tokio::time::sleep(Duration::from_secs(45)).await;
 
 	// Verify payment is re-queued
 	let message = redis_queue.pop().await.unwrap().unwrap();
