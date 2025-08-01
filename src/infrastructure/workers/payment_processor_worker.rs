@@ -51,14 +51,10 @@ pub async fn payment_processing_worker<Q, PR, R>(
 
 		let mut processed = false;
 
-		if let Some((processor_url, processor_name, mut circuit_breaker)) =
+		if let Some((key, mut circuit_breaker)) =
 			router.get_processor_for_payment().await
 		{
 			if circuit_breaker.current_state() == State::Open {
-				warn!(
-					"Circuit breaker for {processor_name} is open. Skipping \
-					 payment processing and re-queueing."
-				);
 				if let Err(e) = queue.push(message).await {
 					error!("Failed to re-queue payment: {e}");
 				}
@@ -68,8 +64,8 @@ pub async fn payment_processing_worker<Q, PR, R>(
 			processed = process_payment_use_case
 				.execute(
 					payment.clone(),
-					processor_url,
-					processor_name,
+					key.url.to_string(),
+					key.name.to_string(),
 					&mut circuit_breaker,
 				)
 				.await

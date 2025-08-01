@@ -1,10 +1,11 @@
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
 use async_trait::async_trait;
 use circuitbreaker_rs::{CircuitBreaker, DefaultPolicy};
 
-use crate::domain::payment_processor::PaymentProcessor;
+use crate::domain::payment_processor::{PaymentProcessor, PaymentProcessorKey};
 use crate::domain::payment_router::PaymentRouter;
 use crate::use_cases::process_payment::PaymentProcessingError;
 
@@ -45,8 +46,7 @@ impl PaymentRouter for InMemoryPaymentRouter {
 	async fn get_processor_for_payment(
 		&self,
 	) -> Option<(
-		String,
-		String,
+		Cow<'static, PaymentProcessorKey>,
 		CircuitBreaker<DefaultPolicy, PaymentProcessingError>,
 	)> {
 		let processors = self.processors.read().unwrap();
@@ -59,8 +59,7 @@ impl PaymentRouter for InMemoryPaymentRouter {
 				circuitbreaker_rs::State::Open
 			) {
 			return Some((
-				default_processor.key.url.to_string(),
-				default_processor.key.name.to_string(),
+				default_processor.key.clone(),
 				self.default_breaker.clone(),
 			));
 		}
@@ -73,8 +72,7 @@ impl PaymentRouter for InMemoryPaymentRouter {
 				circuitbreaker_rs::State::Open
 			) {
 			return Some((
-				fallback_processor.key.url.to_string(),
-				fallback_processor.key.name.to_string(),
+				fallback_processor.key.clone(),
 				self.fallback_breaker.clone(),
 			));
 		}
@@ -109,9 +107,9 @@ mod tests {
 		};
 		router.update_processor_health(default_processor.clone());
 
-		let (url, name, breaker) = router.get_processor_for_payment().await.unwrap();
-		assert_eq!(url, default_processor.key.url);
-		assert_eq!(name, default_processor.key.name);
+		let (key, breaker) = router.get_processor_for_payment().await.unwrap();
+		assert_eq!(key.url, default_processor.key.url);
+		assert_eq!(key.name, default_processor.key.name);
 		assert_eq!(breaker.current_state(), State::Closed);
 	}
 
@@ -192,9 +190,9 @@ mod tests {
 		};
 		router.update_processor_health(default_processor.clone());
 
-		let (url, name, breaker) = router.get_processor_for_payment().await.unwrap();
-		assert_eq!(url, fallback_processor.key.url);
-		assert_eq!(name, fallback_processor.key.name);
+		let (key, breaker) = router.get_processor_for_payment().await.unwrap();
+		assert_eq!(key.url, fallback_processor.key.url);
+		assert_eq!(key.name, fallback_processor.key.name);
 		assert_eq!(breaker.current_state(), State::Closed);
 	}
 
