@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use crate::domain::health_status::HealthStatus;
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PaymentProcessorKey {
 	pub name: &'static str,
 	pub url:  Cow<'static, str>,

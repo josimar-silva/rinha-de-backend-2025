@@ -1,43 +1,70 @@
 use std::borrow::Cow;
-use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
 use async_trait::async_trait;
 use circuitbreaker_rs::{CircuitBreaker, DefaultPolicy};
 
+use crate::domain::health_status::HealthStatus;
 use crate::domain::payment_processor::{PaymentProcessor, PaymentProcessorKey};
 use crate::domain::payment_router::PaymentRouter;
 use crate::use_cases::process_payment::PaymentProcessingError;
 
 #[derive(Clone)]
 pub struct InMemoryPaymentRouter {
-	pub processors:       Arc<RwLock<HashMap<String, PaymentProcessor>>>,
-	pub default_breaker:  CircuitBreaker<DefaultPolicy, PaymentProcessingError>,
-	pub fallback_breaker: CircuitBreaker<DefaultPolicy, PaymentProcessingError>,
+	pub default_processor:  Arc<RwLock<PaymentProcessor>>,
+	pub fallback_processor: Arc<RwLock<PaymentProcessor>>,
+	pub default_breaker:    CircuitBreaker<DefaultPolicy, PaymentProcessingError>,
+	pub fallback_breaker:   CircuitBreaker<DefaultPolicy, PaymentProcessingError>,
 }
 
 impl InMemoryPaymentRouter {
-	pub fn new() -> Self {
+	pub fn new(
+		default_key: PaymentProcessorKey,
+		fallback_key: PaymentProcessorKey,
+	) -> Self {
 		Self {
-			processors:       Arc::new(RwLock::new(HashMap::new())),
-			default_breaker:
-				CircuitBreaker::<DefaultPolicy, PaymentProcessingError>::builder()
-					.build(),
-			fallback_breaker:
-				CircuitBreaker::<DefaultPolicy, PaymentProcessingError>::builder()
-					.build(),
+			default_processor:  Arc::new(RwLock::new(PaymentProcessor {
+				key:               Cow::Owned(default_key),
+				health:            HealthStatus::Failing,
+				min_response_time: 0,
+			})),
+			fallback_processor: Arc::new(RwLock::new(PaymentProcessor {
+				key:               Cow::Owned(fallback_key),
+				health:            HealthStatus::Failing,
+				min_response_time: 0,
+			})),
+			default_breaker:    CircuitBreaker::<
+				DefaultPolicy,
+				PaymentProcessingError,
+			>::builder()
+			.build(),
+			fallback_breaker:   CircuitBreaker::<
+				DefaultPolicy,
+				PaymentProcessingError,
+			>::builder()
+			.build(),
 		}
 	}
 
 	pub fn update_processor_health(&self, processor: PaymentProcessor) {
-		let mut processors = self.processors.write().unwrap();
-		processors.insert(processor.key.name.to_string(), processor);
+		match processor.key.name {
+			"default" => {
+				*self.default_processor.write().unwrap() = processor;
+			}
+			"fallback" => {
+				*self.fallback_processor.write().unwrap() = processor;
+			}
+			_ => {}
+		}
 	}
 }
 
 impl Default for InMemoryPaymentRouter {
 	fn default() -> Self {
-		Self::new()
+		Self::new(
+			PaymentProcessorKey::new("default", "".into()),
+			PaymentProcessorKey::new("fallback", "".into()),
+		)
 	}
 }
 
@@ -49,10 +76,9 @@ impl PaymentRouter for InMemoryPaymentRouter {
 		Cow<'static, PaymentProcessorKey>,
 		CircuitBreaker<DefaultPolicy, PaymentProcessingError>,
 	)> {
-		let processors = self.processors.read().unwrap();
+		let default_processor = self.default_processor.read().unwrap();
 
-		if let Some(default_processor) = processors.get("default") &&
-			default_processor.health.is_healthy() &&
+		if default_processor.health.is_healthy() &&
 			default_processor.min_response_time < 100 &&
 			!matches!(
 				self.default_breaker.current_state(),
@@ -64,8 +90,9 @@ impl PaymentRouter for InMemoryPaymentRouter {
 			));
 		}
 
-		if let Some(fallback_processor) = processors.get("fallback") &&
-			fallback_processor.health.is_healthy() &&
+		let fallback_processor = self.fallback_processor.read().unwrap();
+
+		if fallback_processor.health.is_healthy() &&
 			fallback_processor.min_response_time < 100 &&
 			!matches!(
 				self.fallback_breaker.current_state(),
@@ -83,7 +110,6 @@ impl PaymentRouter for InMemoryPaymentRouter {
 
 #[cfg(test)]
 mod tests {
-
 	use std::borrow::Cow;
 
 	use circuitbreaker_rs::State;
@@ -96,7 +122,7 @@ mod tests {
 
 	#[tokio::test]
 	async fn test_get_processor_for_payment_default_healthy() {
-		let router = InMemoryPaymentRouter::new();
+		let router = InMemoryPaymentRouter::default();
 		let default_processor = PaymentProcessor {
 			key:               Cow::Owned(PaymentProcessorKey::new(
 				"default",
@@ -115,7 +141,7 @@ mod tests {
 
 	#[tokio::test]
 	async fn test_get_processor_for_payment_default_unhealthy() {
-		let router = InMemoryPaymentRouter::new();
+		let router = InMemoryPaymentRouter::default();
 		let default_processor = PaymentProcessor {
 			key:               Cow::Owned(PaymentProcessorKey::new(
 				"default",
@@ -132,7 +158,7 @@ mod tests {
 
 	#[tokio::test]
 	async fn test_get_processor_for_payment_default_slow() {
-		let router = InMemoryPaymentRouter::new();
+		let router = InMemoryPaymentRouter::default();
 		let default_processor = PaymentProcessor {
 			key:               Cow::Owned(PaymentProcessorKey::new(
 				"default",
@@ -149,7 +175,7 @@ mod tests {
 
 	#[tokio::test]
 	async fn test_get_processor_for_payment_default_circuit_open() {
-		let router = InMemoryPaymentRouter::new();
+		let router = InMemoryPaymentRouter::default();
 		let default_processor = PaymentProcessor {
 			key:               Cow::Owned(PaymentProcessorKey::new(
 				"default",
@@ -168,7 +194,7 @@ mod tests {
 
 	#[tokio::test]
 	async fn test_get_processor_for_payment_fallback_healthy() {
-		let router = InMemoryPaymentRouter::new();
+		let router = InMemoryPaymentRouter::default();
 		let fallback_processor = PaymentProcessor {
 			key:               Cow::Owned(PaymentProcessorKey::new(
 				"fallback",
@@ -198,17 +224,17 @@ mod tests {
 
 	#[tokio::test]
 	async fn test_get_processor_for_payment_no_processors() {
-		let router = InMemoryPaymentRouter::new();
+		let router = InMemoryPaymentRouter::default();
 		let result = router.get_processor_for_payment().await;
 		assert!(result.is_none());
 	}
 
 	#[tokio::test]
 	async fn test_update_processor_health() {
-		let router = InMemoryPaymentRouter::new();
+		let router = InMemoryPaymentRouter::default();
 		let processor = PaymentProcessor {
 			key:               Cow::Owned(PaymentProcessorKey::new(
-				"test_processor",
+				"default",
 				"http://test.com".into(),
 			)),
 			health:            HealthStatus::Healthy,
@@ -216,8 +242,8 @@ mod tests {
 		};
 		router.update_processor_health(processor.clone());
 
-		let processors = router.processors.read().unwrap();
-		assert!(processors.contains_key("test_processor"));
-		assert_eq!(processors["test_processor"].key.url, processor.key.url);
+		let default_processor = router.default_processor.read().unwrap();
+		assert_eq!(default_processor.key.name, "default");
+		assert_eq!(default_processor.key.url, "http://test.com");
 	}
 }

@@ -32,7 +32,10 @@ pub async fn run(config: Arc<Config>) -> std::io::Result<()> {
 
 	info!("Starting health check worker...");
 
-	let in_memory_router = InMemoryPaymentRouter::new();
+	let in_memory_router = InMemoryPaymentRouter::new(
+		config.get_default_key(),
+		config.get_fallback_key(),
+	);
 
 	tokio::spawn(processor_health_monitor_worker(
 		in_memory_router.clone(),

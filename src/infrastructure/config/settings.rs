@@ -26,17 +26,22 @@ impl Config {
 		config_builder.try_deserialize()
 	}
 
+	pub fn get_default_key(&self) -> PaymentProcessorKey {
+		PaymentProcessorKey::new(
+			"default",
+			self.default_payment_processor_url.clone(),
+		)
+	}
+
+	pub fn get_fallback_key(&self) -> PaymentProcessorKey {
+		PaymentProcessorKey::new(
+			"fallback",
+			self.fallback_payment_processor_url.clone(),
+		)
+	}
+
 	pub fn get_processors_keys(&self) -> Vec<PaymentProcessorKey> {
-		vec![
-			PaymentProcessorKey::new(
-				"default",
-				self.default_payment_processor_url.clone(),
-			),
-			PaymentProcessorKey::new(
-				"fallback",
-				self.fallback_payment_processor_url.clone(),
-			),
-		]
+		vec![self.get_default_key(), self.get_fallback_key()]
 	}
 }
 
@@ -48,13 +53,7 @@ mod tests {
 
 	const APP_PREFIX: &str = "APP";
 
-	#[test]
-	fn test_config_load_fails_when_app_configs_are_unavailable() {
-		assert!(Config::load().is_err());
-	}
-
-	#[test]
-	fn test_config_load_app_settings() {
+	fn create_config_for_test() -> Config {
 		let source = Environment::with_prefix(APP_PREFIX).source(Some({
 			let mut env = HashMap::new();
 			env.insert("APP_REDIS_URL".into(), "redis://test_redis/".into());
@@ -71,8 +70,17 @@ mod tests {
 			env
 		}));
 
-		let config =
-			Config::load_from(source).expect("Failed to load config in test");
+		Config::load_from(source).expect("Failed to load config in test")
+	}
+
+	#[test]
+	fn test_config_load_fails_when_app_configs_are_unavailable() {
+		assert!(Config::load().is_err());
+	}
+
+	#[test]
+	fn test_config_load_app_settings() {
+		let config = create_config_for_test();
 
 		assert_eq!(config.redis_url, "redis://test_redis/");
 		assert_eq!(config.default_payment_processor_url, "http://test_default/");
@@ -118,5 +126,33 @@ mod tests {
 		);
 		assert_eq!(config.server_keepalive, 120);
 		assert_eq!(config.report_url, None);
+	}
+
+	#[test]
+	fn test_get_default_key() {
+		let config = create_config_for_test();
+		let default_key = config.get_default_key();
+
+		assert_eq!(default_key.name, "default");
+		assert_eq!(default_key.url, config.default_payment_processor_url);
+	}
+
+	#[test]
+	fn test_get_fallback_key() {
+		let config = create_config_for_test();
+		let fallback_key = config.get_fallback_key();
+
+		assert_eq!(fallback_key.name, "fallback");
+		assert_eq!(fallback_key.url, config.fallback_payment_processor_url);
+	}
+
+	#[test]
+	fn test_get_processors_keys() {
+		let config = create_config_for_test();
+		let keys = config.get_processors_keys();
+
+		assert_eq!(keys.len(), 2);
+		assert_eq!(keys[0], config.get_default_key());
+		assert_eq!(keys[1], config.get_fallback_key());
 	}
 }

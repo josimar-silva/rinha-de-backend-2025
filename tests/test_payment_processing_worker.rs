@@ -38,24 +38,21 @@ async fn test_payment_processing_worker_default_success() {
 	let payment_repo = RedisPaymentRepository::new(redis_client.clone());
 	let process_payment_use_case =
 		ProcessPaymentUseCase::new(payment_repo.clone(), http_client.clone());
-	let router = InMemoryPaymentRouter::new();
+	let default_key = PaymentProcessorKey::new("default", default_url.into());
+	let fallback_key = PaymentProcessorKey::new("fallback", fallback_url.into());
+	let router =
+		InMemoryPaymentRouter::new(default_key.clone(), fallback_key.clone());
 
 	// Set up processor health
 	let default_processor = PaymentProcessor {
-		key:               Cow::Owned(PaymentProcessorKey::new(
-			"default",
-			default_url.into(),
-		)),
+		key:               Cow::Owned(default_key),
 		health:            HealthStatus::Healthy,
 		min_response_time: 0,
 	};
 	router.update_processor_health(default_processor);
 
 	let fallback_processor = PaymentProcessor {
-		key:               Cow::Owned(PaymentProcessorKey::new(
-			"fallback",
-			fallback_url.into(),
-		)),
+		key:               Cow::Owned(fallback_key),
 		health:            HealthStatus::Failing,
 		min_response_time: 0,
 	};
@@ -112,6 +109,8 @@ async fn test_payment_processing_worker_fallback_success() {
 		setup_payment_processors().await;
 	let default_url = default_processor_container.url.clone();
 	let fallback_url = fallback_processor_container.url.clone();
+	let default_key = PaymentProcessorKey::new("default", default_url.into());
+	let fallback_key = PaymentProcessorKey::new("fallback", fallback_url.into());
 	let http_client = Client::builder()
 		.timeout(Duration::from_secs(2))
 		.build()
@@ -121,24 +120,19 @@ async fn test_payment_processing_worker_fallback_success() {
 	let payment_repo = RedisPaymentRepository::new(redis_client.clone());
 	let process_payment_use_case =
 		ProcessPaymentUseCase::new(payment_repo.clone(), http_client.clone());
-	let router = InMemoryPaymentRouter::new();
+	let router =
+		InMemoryPaymentRouter::new(default_key.clone(), fallback_key.clone());
 
 	// Set up processor health
 	let default_processor = PaymentProcessor {
-		key:               Cow::Owned(PaymentProcessorKey::new(
-			"default",
-			default_url.into(),
-		)),
+		key:               Cow::Owned(default_key),
 		health:            HealthStatus::Failing,
 		min_response_time: 10000,
 	};
 	router.update_processor_health(default_processor);
 
 	let fallback_processor = PaymentProcessor {
-		key:               Cow::Owned(PaymentProcessorKey::new(
-			"fallback",
-			fallback_url.into(),
-		)),
+		key:               Cow::Owned(fallback_key),
 		health:            HealthStatus::Healthy,
 		min_response_time: 10,
 	};
@@ -198,24 +192,23 @@ async fn test_payment_processing_worker_requeue_message_given_processor_are_down
 	let payment_repo = RedisPaymentRepository::new(redis_client.clone());
 	let process_payment_use_case =
 		ProcessPaymentUseCase::new(payment_repo.clone(), http_client.clone());
-	let router = InMemoryPaymentRouter::new();
+	let default_key =
+		PaymentProcessorKey::new("default", "http://non-existent-url:8080".into());
+	let fallback_key =
+		PaymentProcessorKey::new("fallback", "http://non-existent-url:8080".into());
+	let router =
+		InMemoryPaymentRouter::new(default_key.clone(), fallback_key.clone());
 
 	// Set up processors to be failing
 	let default_processor = PaymentProcessor {
-		key:               Cow::Owned(PaymentProcessorKey::new(
-			"default",
-			"http://non-existent-url:8080".into(),
-		)),
+		key:               Cow::Owned(default_key),
 		health:            HealthStatus::Failing,
 		min_response_time: 0,
 	};
 	router.update_processor_health(default_processor);
 
 	let fallback_processor = PaymentProcessor {
-		key:               Cow::Owned(PaymentProcessorKey::new(
-			"fallback",
-			"http://non-existent-url:8080".into(),
-		)),
+		key:               Cow::Owned(fallback_key),
 		health:            HealthStatus::Failing,
 		min_response_time: 0,
 	};
@@ -270,6 +263,9 @@ async fn test_payment_processing_worker_skip_processed_message() {
 		setup_payment_processors().await;
 	let default_url = default_processor_container.url.clone();
 	let fallback_url = fallback_processor_container.url.clone();
+	let default_key = PaymentProcessorKey::new("default", default_url.into());
+	let fallback_key = PaymentProcessorKey::new("fallback", fallback_url.into());
+
 	let http_client = Client::builder()
 		.timeout(Duration::from_secs(2))
 		.build()
@@ -279,24 +275,19 @@ async fn test_payment_processing_worker_skip_processed_message() {
 	let payment_repo = RedisPaymentRepository::new(redis_client.clone());
 	let process_payment_use_case =
 		ProcessPaymentUseCase::new(payment_repo.clone(), http_client.clone());
-	let router = InMemoryPaymentRouter::new();
+	let router =
+		InMemoryPaymentRouter::new(default_key.clone(), fallback_key.clone());
 
 	// Set up processor health
 	let default_processor = PaymentProcessor {
-		key:               Cow::Owned(PaymentProcessorKey::new(
-			"default",
-			default_url.clone().into(),
-		)),
+		key:               Cow::Owned(default_key),
 		health:            HealthStatus::Healthy,
 		min_response_time: 0,
 	};
 	router.update_processor_health(default_processor);
 
 	let fallback_processor = PaymentProcessor {
-		key:               Cow::Owned(PaymentProcessorKey::new(
-			"fallback",
-			fallback_url.into(),
-		)),
+		key:               Cow::Owned(fallback_key),
 		health:            HealthStatus::Failing,
 		min_response_time: 0,
 	};
@@ -367,7 +358,9 @@ async fn test_payment_processing_worker_redis_failure() {
 	let payment_repo = RedisPaymentRepository::new(redis_client.clone());
 	let process_payment_use_case =
 		ProcessPaymentUseCase::new(payment_repo.clone(), http_client.clone());
-	let router = InMemoryPaymentRouter::new();
+	let default_key = PaymentProcessorKey::new("default", "".into());
+	let fallback_key = PaymentProcessorKey::new("fallback", "".into());
+	let router = InMemoryPaymentRouter::new(default_key, fallback_key);
 
 	// Stop the redis container to simulate a connection failure
 	let _ = redis_container_instance.stop().await;
@@ -397,6 +390,9 @@ async fn test_payment_processing_worker_circuit_breaker_open() {
 		setup_payment_processors().await;
 	let default_url = default_processor_container.url.clone();
 	let fallback_url = fallback_processor_container.url.clone();
+	let default_key = PaymentProcessorKey::new("default", default_url.into());
+	let fallback_key = PaymentProcessorKey::new("fallback", fallback_url.into());
+
 	let http_client = Client::builder()
 		.timeout(Duration::from_secs(2))
 		.build()
@@ -406,24 +402,19 @@ async fn test_payment_processing_worker_circuit_breaker_open() {
 	let payment_repo = RedisPaymentRepository::new(redis_client.clone());
 	let process_payment_use_case =
 		ProcessPaymentUseCase::new(payment_repo.clone(), http_client.clone());
-	let router = InMemoryPaymentRouter::new();
+	let router =
+		InMemoryPaymentRouter::new(default_key.clone(), fallback_key.clone());
 
 	// Set up processors
 	let default_processor = PaymentProcessor {
-		key:               Cow::Owned(PaymentProcessorKey::new(
-			"default",
-			default_url.into(),
-		)),
+		key:               Cow::Owned(default_key),
 		health:            HealthStatus::Healthy,
 		min_response_time: 0,
 	};
 	router.update_processor_health(default_processor);
 
 	let fallback_processor = PaymentProcessor {
-		key:               Cow::Owned(PaymentProcessorKey::new(
-			"fallback",
-			fallback_url.into(),
-		)),
+		key:               Cow::Owned(fallback_key),
 		health:            HealthStatus::Healthy,
 		min_response_time: 0,
 	};
