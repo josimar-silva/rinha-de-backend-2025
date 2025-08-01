@@ -1,20 +1,20 @@
+use std::borrow::Cow;
+
 use config::Environment;
 use serde::Deserialize;
 
-const APP_PREFIX: &str = "APP";
-
 #[derive(Debug, Deserialize, Clone)]
 pub struct Config {
-	pub redis_url: String,
-	pub default_payment_processor_url: String,
-	pub fallback_payment_processor_url: String,
+	pub redis_url: Cow<'static, str>,
+	pub default_payment_processor_url: Cow<'static, str>,
+	pub fallback_payment_processor_url: Cow<'static, str>,
 	pub server_keepalive: u64,
-	pub report_url: Option<String>,
+	pub report_url: Option<Cow<'static, str>>,
 }
 
 impl Config {
 	pub fn load() -> Result<Self, config::ConfigError> {
-		Self::load_from(Environment::with_prefix(APP_PREFIX))
+		Self::load_from(Environment::with_prefix("APP"))
 	}
 
 	fn load_from(environment: Environment) -> Result<Self, config::ConfigError> {
@@ -30,6 +30,8 @@ mod tests {
 	use std::collections::HashMap;
 
 	use super::*;
+
+	const APP_PREFIX: &str = "APP";
 
 	#[test]
 	fn test_config_load_fails_when_app_configs_are_unavailable() {
@@ -64,7 +66,7 @@ mod tests {
 			"http://test_fallback/"
 		);
 		assert_eq!(config.server_keepalive, 120);
-		assert_eq!(config.report_url, Some("/tmp/reports".to_string()));
+		assert_eq!(config.report_url, Some(Cow::from("/tmp/reports")));
 	}
 
 	#[test]

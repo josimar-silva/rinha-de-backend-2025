@@ -25,8 +25,8 @@ async fn test_update_processor_health_when_processor_is_reachable() {
 	let worker_handle = tokio::spawn(processor_health_monitor_worker(
 		router.clone(),
 		http_client.clone(),
-		default_url.clone(),
-		fallback_url.clone(),
+		default_url.clone().into(),
+		fallback_url.clone().into(),
 	));
 
 	wait_for_workflow_to_run().await;
@@ -72,8 +72,8 @@ async fn test_marks_processor_as_failing_when_unreachable() {
 	let worker_handle = tokio::spawn(processor_health_monitor_worker(
 		router.clone(),
 		http_client.clone(),
-		default_url.clone(),
-		fallback_url.clone(),
+		default_url.clone().into(),
+		fallback_url.clone().into(),
 	));
 
 	wait_for_workflow_to_run().await;
@@ -122,8 +122,8 @@ async fn test_should_not_panic_an_error_occurs() {
 	let worker_handle = tokio::spawn(processor_health_monitor_worker(
 		router.clone(),
 		http_client.clone(),
-		default_non_existent_url.clone(),
-		fallback_non_existent_url.clone(),
+		default_non_existent_url.clone().into(),
+		fallback_non_existent_url.clone().into(),
 	));
 
 	wait_for_workflow_to_run().await;

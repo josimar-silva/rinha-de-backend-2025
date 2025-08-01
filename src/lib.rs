@@ -26,7 +26,7 @@ pub async fn run(config: Arc<Config>) -> std::io::Result<()> {
 	env_logger::init();
 
 	let redis_client =
-		redis::Client::open(config.redis_url.clone()).expect("Invalid Redis URL");
+		redis::Client::open(config.redis_url.as_ref()).expect("Invalid Redis URL");
 
 	let http_client = Client::new();
 
