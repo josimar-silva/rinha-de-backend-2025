@@ -1,23 +1,20 @@
-use std::borrow::Cow;
-
 use log::error;
 use reqwest::Client;
 use tokio::time::{Duration, sleep};
 
 use crate::domain::health_status::HealthStatus;
-use crate::domain::payment_processor::PaymentProcessor;
+use crate::domain::payment_processor::{PaymentProcessor, PaymentProcessorKey};
 use crate::infrastructure::routing::in_memory_payment_router::InMemoryPaymentRouter;
 
 pub async fn processor_health_monitor_worker(
 	router: InMemoryPaymentRouter,
 	http_client: Client,
-	default_processor_url: Cow<'static, str>,
-	fallback_processor_url: Cow<'static, str>,
+	processor_keys: Vec<PaymentProcessorKey>,
 ) {
-	let urls = [
-		("default".to_string(), default_processor_url.to_string()),
-		("fallback".to_string(), fallback_processor_url.to_string()),
-	];
+	let urls: Vec<(String, String)> = processor_keys
+		.into_iter()
+		.map(|key| (key.name.to_string(), key.url.to_string()))
+		.collect();
 
 	loop {
 		for (name, url) in &urls {

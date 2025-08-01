@@ -1,6 +1,8 @@
 use reqwest::Client;
 use rinha_de_backend::domain::health_status::HealthStatus;
-use rinha_de_backend::domain::payment_processor::PaymentProcessor;
+use rinha_de_backend::domain::payment_processor::{
+	PaymentProcessor, PaymentProcessorKey,
+};
 use rinha_de_backend::infrastructure::routing::in_memory_payment_router::InMemoryPaymentRouter;
 use rinha_de_backend::infrastructure::workers::processor_health_monitor_worker::processor_health_monitor_worker;
 use tokio::time::{Duration, sleep};
@@ -21,12 +23,16 @@ async fn test_update_processor_health_when_processor_is_reachable() {
 		.unwrap();
 	let router = InMemoryPaymentRouter::new();
 
+	let processor_keys = vec![
+		PaymentProcessorKey::new("default", default_url.into()),
+		PaymentProcessorKey::new("fallback", fallback_url.into()),
+	];
+
 	// Spawn the worker
 	let worker_handle = tokio::spawn(processor_health_monitor_worker(
 		router.clone(),
 		http_client.clone(),
-		default_url.clone().into(),
-		fallback_url.clone().into(),
+		processor_keys,
 	));
 
 	wait_for_workflow_to_run().await;
@@ -69,11 +75,15 @@ async fn test_marks_processor_as_failing_when_unreachable() {
 		min_response_time: 0,
 	});
 
+	let processor_keys = vec![
+		PaymentProcessorKey::new("default", default_url.into()),
+		PaymentProcessorKey::new("fallback", fallback_url.into()),
+	];
+
 	let worker_handle = tokio::spawn(processor_health_monitor_worker(
 		router.clone(),
 		http_client.clone(),
-		default_url.clone().into(),
-		fallback_url.clone().into(),
+		processor_keys,
 	));
 
 	wait_for_workflow_to_run().await;
@@ -119,11 +129,15 @@ async fn test_should_not_panic_an_error_occurs() {
 	let fallback_non_existent_url =
 		"http://another-non-existent-fallback:8080".to_string();
 
+	let processor_keys = vec![
+		PaymentProcessorKey::new("default", default_non_existent_url.into()),
+		PaymentProcessorKey::new("fallback", fallback_non_existent_url.into()),
+	];
+
 	let worker_handle = tokio::spawn(processor_health_monitor_worker(
 		router.clone(),
 		http_client.clone(),
-		default_non_existent_url.clone().into(),
-		fallback_non_existent_url.clone().into(),
+		processor_keys,
 	));
 
 	wait_for_workflow_to_run().await;

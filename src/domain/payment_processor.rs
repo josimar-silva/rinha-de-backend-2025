@@ -1,4 +1,17 @@
+use std::borrow::Cow;
+
 use crate::domain::health_status::HealthStatus;
+
+pub struct PaymentProcessorKey {
+	pub name: &'static str,
+	pub url:  Cow<'static, str>,
+}
+
+impl PaymentProcessorKey {
+	pub fn new(name: &'static str, url: Cow<'static, str>) -> Self {
+		Self { name, url }
+	}
+}
 
 #[derive(Clone)]
 pub struct PaymentProcessor {

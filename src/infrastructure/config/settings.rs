@@ -3,6 +3,8 @@ use std::borrow::Cow;
 use config::Environment;
 use serde::Deserialize;
 
+use crate::domain::payment_processor::PaymentProcessorKey;
+
 #[derive(Debug, Deserialize, Clone)]
 pub struct Config {
 	pub redis_url: Cow<'static, str>,
@@ -22,6 +24,19 @@ impl Config {
 			config::Config::builder().add_source(environment).build()?;
 
 		config_builder.try_deserialize()
+	}
+
+	pub fn get_processors_keys(&self) -> Vec<PaymentProcessorKey> {
+		vec![
+			PaymentProcessorKey::new(
+				"default",
+				self.default_payment_processor_url.clone(),
+			),
+			PaymentProcessorKey::new(
+				"fallback",
+				self.fallback_payment_processor_url.clone(),
+			),
+		]
 	}
 }
 
