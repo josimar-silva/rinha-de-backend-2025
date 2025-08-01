@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::sync::{Arc, RwLock};
 
 use async_trait::async_trait;
@@ -19,17 +18,17 @@ pub struct InMemoryPaymentRouter {
 
 impl InMemoryPaymentRouter {
 	pub fn new(
-		default_key: PaymentProcessorKey,
-		fallback_key: PaymentProcessorKey,
+		default_key: Arc<PaymentProcessorKey>,
+		fallback_key: Arc<PaymentProcessorKey>,
 	) -> Self {
 		Self {
 			default_processor:  Arc::new(RwLock::new(PaymentProcessor {
-				key:               Cow::Owned(default_key),
+				key:               default_key,
 				health:            HealthStatus::Failing,
 				min_response_time: 0,
 			})),
 			fallback_processor: Arc::new(RwLock::new(PaymentProcessor {
-				key:               Cow::Owned(fallback_key),
+				key:               fallback_key,
 				health:            HealthStatus::Failing,
 				min_response_time: 0,
 			})),
@@ -62,8 +61,8 @@ impl InMemoryPaymentRouter {
 impl Default for InMemoryPaymentRouter {
 	fn default() -> Self {
 		Self::new(
-			PaymentProcessorKey::new("default", "".into()),
-			PaymentProcessorKey::new("fallback", "".into()),
+			Arc::new(PaymentProcessorKey::new("default", "".into())),
+			Arc::new(PaymentProcessorKey::new("fallback", "".into())),
 		)
 	}
 }
@@ -73,7 +72,7 @@ impl PaymentRouter for InMemoryPaymentRouter {
 	async fn get_processor_for_payment(
 		&self,
 	) -> Option<(
-		Cow<'static, PaymentProcessorKey>,
+		Arc<PaymentProcessorKey>,
 		CircuitBreaker<DefaultPolicy, PaymentProcessingError>,
 	)> {
 		let default_processor = self.default_processor.read().unwrap();
@@ -110,7 +109,7 @@ impl PaymentRouter for InMemoryPaymentRouter {
 
 #[cfg(test)]
 mod tests {
-	use std::borrow::Cow;
+	use std::sync::Arc;
 
 	use circuitbreaker_rs::State;
 	use rinha_de_backend::domain::health_status::HealthStatus;
@@ -124,7 +123,7 @@ mod tests {
 	async fn test_get_processor_for_payment_default_healthy() {
 		let router = InMemoryPaymentRouter::default();
 		let default_processor = PaymentProcessor {
-			key:               Cow::Owned(PaymentProcessorKey::new(
+			key:               Arc::new(PaymentProcessorKey::new(
 				"default",
 				"http://default.com".into(),
 			)),
@@ -143,7 +142,7 @@ mod tests {
 	async fn test_get_processor_for_payment_default_unhealthy() {
 		let router = InMemoryPaymentRouter::default();
 		let default_processor = PaymentProcessor {
-			key:               Cow::Owned(PaymentProcessorKey::new(
+			key:               Arc::new(PaymentProcessorKey::new(
 				"default",
 				"http://default.com".into(),
 			)),
@@ -160,7 +159,7 @@ mod tests {
 	async fn test_get_processor_for_payment_default_slow() {
 		let router = InMemoryPaymentRouter::default();
 		let default_processor = PaymentProcessor {
-			key:               Cow::Owned(PaymentProcessorKey::new(
+			key:               Arc::new(PaymentProcessorKey::new(
 				"default",
 				"http://default.com".into(),
 			)),
@@ -177,7 +176,7 @@ mod tests {
 	async fn test_get_processor_for_payment_default_circuit_open() {
 		let router = InMemoryPaymentRouter::default();
 		let default_processor = PaymentProcessor {
-			key:               Cow::Owned(PaymentProcessorKey::new(
+			key:               Arc::new(PaymentProcessorKey::new(
 				"default",
 				"http://default.com".into(),
 			)),
@@ -196,7 +195,7 @@ mod tests {
 	async fn test_get_processor_for_payment_fallback_healthy() {
 		let router = InMemoryPaymentRouter::default();
 		let fallback_processor = PaymentProcessor {
-			key:               Cow::Owned(PaymentProcessorKey::new(
+			key:               Arc::new(PaymentProcessorKey::new(
 				"fallback",
 				"http://fallback.com".into(),
 			)),
@@ -207,7 +206,7 @@ mod tests {
 
 		// Ensure default is not chosen
 		let default_processor = PaymentProcessor {
-			key:               Cow::Owned(PaymentProcessorKey::new(
+			key:               Arc::new(PaymentProcessorKey::new(
 				"default",
 				"http://default.com".into(),
 			)),
@@ -233,7 +232,7 @@ mod tests {
 	async fn test_update_processor_health() {
 		let router = InMemoryPaymentRouter::default();
 		let processor = PaymentProcessor {
-			key:               Cow::Owned(PaymentProcessorKey::new(
+			key:               Arc::new(PaymentProcessorKey::new(
 				"default",
 				"http://test.com".into(),
 			)),

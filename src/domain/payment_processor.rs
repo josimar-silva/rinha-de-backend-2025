@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::sync::Arc;
 
 use crate::domain::health_status::HealthStatus;
 
@@ -16,7 +17,7 @@ impl PaymentProcessorKey {
 
 #[derive(Clone)]
 pub struct PaymentProcessor {
-	pub key:               Cow<'static, PaymentProcessorKey>,
+	pub key:               Arc<PaymentProcessorKey>,
 	pub health:            HealthStatus,
 	pub min_response_time: u64,
 }

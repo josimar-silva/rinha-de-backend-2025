@@ -40,7 +40,6 @@ pub async fn run(config: Arc<Config>) -> std::io::Result<()> {
 	tokio::spawn(processor_health_monitor_worker(
 		in_memory_router.clone(),
 		http_client.clone(),
-		config.get_processors_keys(),
 	));
 
 	info!("Starting payment processing worker...");

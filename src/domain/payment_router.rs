@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::sync::Arc;
 
 use async_trait::async_trait;
 use circuitbreaker_rs::{CircuitBreaker, DefaultPolicy};
@@ -11,7 +11,7 @@ pub trait PaymentRouter: Send + Sync + 'static {
 	async fn get_processor_for_payment(
 		&self,
 	) -> Option<(
-		Cow<'static, PaymentProcessorKey>,
+		Arc<PaymentProcessorKey>,
 		CircuitBreaker<DefaultPolicy, PaymentProcessingError>,
 	)>;
 }

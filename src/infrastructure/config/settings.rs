@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::sync::Arc;
 
 use config::Environment;
 use serde::Deserialize;
@@ -26,22 +27,18 @@ impl Config {
 		config_builder.try_deserialize()
 	}
 
-	pub fn get_default_key(&self) -> PaymentProcessorKey {
-		PaymentProcessorKey::new(
+	pub fn get_default_key(&self) -> Arc<PaymentProcessorKey> {
+		Arc::new(PaymentProcessorKey::new(
 			"default",
 			self.default_payment_processor_url.clone(),
-		)
+		))
 	}
 
-	pub fn get_fallback_key(&self) -> PaymentProcessorKey {
-		PaymentProcessorKey::new(
+	pub fn get_fallback_key(&self) -> Arc<PaymentProcessorKey> {
+		Arc::new(PaymentProcessorKey::new(
 			"fallback",
 			self.fallback_payment_processor_url.clone(),
-		)
-	}
-
-	pub fn get_processors_keys(&self) -> Vec<PaymentProcessorKey> {
-		vec![self.get_default_key(), self.get_fallback_key()]
+		))
 	}
 }
 
@@ -144,15 +141,5 @@ mod tests {
 
 		assert_eq!(fallback_key.name, "fallback");
 		assert_eq!(fallback_key.url, config.fallback_payment_processor_url);
-	}
-
-	#[test]
-	fn test_get_processors_keys() {
-		let config = create_config_for_test();
-		let keys = config.get_processors_keys();
-
-		assert_eq!(keys.len(), 2);
-		assert_eq!(keys[0], config.get_default_key());
-		assert_eq!(keys[1], config.get_fallback_key());
 	}
 }
