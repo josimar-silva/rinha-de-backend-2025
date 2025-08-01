@@ -86,7 +86,7 @@ jobs:
       - name: ⬆️ Upload Flamegraph
         uses: actions/upload-artifact@v4
         with:
-          name: flamegraph-${{ github.sha }}.json
+          name: flamegraph-${{ github.sha }}.zip
           path: reports/**/*.svg
 
       - name: 📊 Process Performance Results
