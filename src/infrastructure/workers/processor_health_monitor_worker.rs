@@ -1,3 +1,6 @@
+use std::borrow::Cow;
+use std::collections::HashMap;
+
 use log::error;
 use reqwest::Client;
 use tokio::time::{Duration, sleep};
@@ -11,14 +14,14 @@ pub async fn processor_health_monitor_worker(
 	http_client: Client,
 	processor_keys: Vec<PaymentProcessorKey>,
 ) {
-	let urls: Vec<(String, String)> = processor_keys
+	let processor_keys_map: HashMap<&str, PaymentProcessorKey> = processor_keys
 		.into_iter()
-		.map(|key| (key.name.to_string(), key.url.to_string()))
+		.map(|key| (key.name, key))
 		.collect();
 
 	loop {
-		for (name, url) in &urls {
-			let health_url = format!("{url}/payments/service-health");
+		for (name, key) in &processor_keys_map {
+			let health_url = format!("{}/payments/service-health", key.url);
 
 			match http_client.get(&health_url).send().await {
 				Ok(resp) => {
@@ -38,8 +41,7 @@ pub async fn processor_health_monitor_worker(
 								};
 
 								router.update_processor_health(PaymentProcessor {
-									name: name.clone(),
-									url: url.clone(),
+									key: Cow::Owned(key.clone()),
 									health: health_status.clone(),
 									min_response_time,
 								});
@@ -53,8 +55,7 @@ pub async fn processor_health_monitor_worker(
 						}
 					} else {
 						router.update_processor_health(PaymentProcessor {
-							name:              name.clone(),
-							url:               url.clone(),
+							key:               Cow::Owned(key.clone()),
 							health:            HealthStatus::Failing,
 							min_response_time: 0,
 						});
@@ -63,8 +64,7 @@ pub async fn processor_health_monitor_worker(
 				Err(e) => {
 					error!("Failed to perform health check for {name}: {e}");
 					let processor = PaymentProcessor {
-						name:              name.clone(),
-						url:               url.clone(),
+						key:               Cow::Owned(key.clone()),
 						health:            HealthStatus::Failing,
 						min_response_time: 0,
 					};

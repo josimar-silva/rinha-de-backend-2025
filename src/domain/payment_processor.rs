@@ -2,6 +2,7 @@ use std::borrow::Cow;
 
 use crate::domain::health_status::HealthStatus;
 
+#[derive(Clone)]
 pub struct PaymentProcessorKey {
 	pub name: &'static str,
 	pub url:  Cow<'static, str>,
@@ -15,8 +16,7 @@ impl PaymentProcessorKey {
 
 #[derive(Clone)]
 pub struct PaymentProcessor {
-	pub name:              String,
-	pub url:               String,
+	pub key:               Cow<'static, PaymentProcessorKey>,
 	pub health:            HealthStatus,
 	pub min_response_time: u64,
 }

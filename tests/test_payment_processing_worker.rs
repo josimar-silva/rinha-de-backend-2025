@@ -1,7 +1,11 @@
+use std::borrow::Cow;
+
 use reqwest::Client;
 use rinha_de_backend::domain::health_status::HealthStatus;
 use rinha_de_backend::domain::payment::Payment;
-use rinha_de_backend::domain::payment_processor::PaymentProcessor;
+use rinha_de_backend::domain::payment_processor::{
+	PaymentProcessor, PaymentProcessorKey,
+};
 use rinha_de_backend::domain::queue::{Message, Queue};
 use rinha_de_backend::domain::repository::PaymentRepository;
 use rinha_de_backend::infrastructure::persistence::redis_payment_repository::RedisPaymentRepository;
@@ -38,16 +42,20 @@ async fn test_payment_processing_worker_default_success() {
 
 	// Set up processor health
 	let default_processor = PaymentProcessor {
-		name:              "default".to_string(),
-		url:               default_url.clone(),
+		key:               Cow::Owned(PaymentProcessorKey::new(
+			"default",
+			default_url.into(),
+		)),
 		health:            HealthStatus::Healthy,
 		min_response_time: 0,
 	};
 	router.update_processor_health(default_processor);
 
 	let fallback_processor = PaymentProcessor {
-		name:              "fallback".to_string(),
-		url:               fallback_url.clone(),
+		key:               Cow::Owned(PaymentProcessorKey::new(
+			"fallback",
+			fallback_url.into(),
+		)),
 		health:            HealthStatus::Failing,
 		min_response_time: 0,
 	};
@@ -117,16 +125,20 @@ async fn test_payment_processing_worker_fallback_success() {
 
 	// Set up processor health
 	let default_processor = PaymentProcessor {
-		name:              "default".to_string(),
-		url:               default_url.clone(),
+		key:               Cow::Owned(PaymentProcessorKey::new(
+			"default",
+			default_url.into(),
+		)),
 		health:            HealthStatus::Failing,
 		min_response_time: 10000,
 	};
 	router.update_processor_health(default_processor);
 
 	let fallback_processor = PaymentProcessor {
-		name:              "fallback".to_string(),
-		url:               fallback_url.clone(),
+		key:               Cow::Owned(PaymentProcessorKey::new(
+			"fallback",
+			fallback_url.into(),
+		)),
 		health:            HealthStatus::Healthy,
 		min_response_time: 10,
 	};
@@ -190,16 +202,20 @@ async fn test_payment_processing_worker_requeue_message_given_processor_are_down
 
 	// Set up processors to be failing
 	let default_processor = PaymentProcessor {
-		name:              "default".to_string(),
-		url:               "http://non-existent-url:8080".to_string(),
+		key:               Cow::Owned(PaymentProcessorKey::new(
+			"default",
+			"http://non-existent-url:8080".into(),
+		)),
 		health:            HealthStatus::Failing,
 		min_response_time: 0,
 	};
 	router.update_processor_health(default_processor);
 
 	let fallback_processor = PaymentProcessor {
-		name:              "fallback".to_string(),
-		url:               "http://non-existent-url:8080".to_string(),
+		key:               Cow::Owned(PaymentProcessorKey::new(
+			"fallback",
+			"http://non-existent-url:8080".into(),
+		)),
 		health:            HealthStatus::Failing,
 		min_response_time: 0,
 	};
@@ -267,16 +283,20 @@ async fn test_payment_processing_worker_skip_processed_message() {
 
 	// Set up processor health
 	let default_processor = PaymentProcessor {
-		name:              "default".to_string(),
-		url:               default_url.clone(),
+		key:               Cow::Owned(PaymentProcessorKey::new(
+			"default",
+			default_url.clone().into(),
+		)),
 		health:            HealthStatus::Healthy,
 		min_response_time: 0,
 	};
 	router.update_processor_health(default_processor);
 
 	let fallback_processor = PaymentProcessor {
-		name:              "fallback".to_string(),
-		url:               fallback_url.clone(),
+		key:               Cow::Owned(PaymentProcessorKey::new(
+			"fallback",
+			fallback_url.into(),
+		)),
 		health:            HealthStatus::Failing,
 		min_response_time: 0,
 	};
@@ -390,16 +410,20 @@ async fn test_payment_processing_worker_circuit_breaker_open() {
 
 	// Set up processors
 	let default_processor = PaymentProcessor {
-		name:              "default".to_string(),
-		url:               default_url.clone(),
+		key:               Cow::Owned(PaymentProcessorKey::new(
+			"default",
+			default_url.into(),
+		)),
 		health:            HealthStatus::Healthy,
 		min_response_time: 0,
 	};
 	router.update_processor_health(default_processor);
 
 	let fallback_processor = PaymentProcessor {
-		name:              "fallback".to_string(),
-		url:               fallback_url.clone(),
+		key:               Cow::Owned(PaymentProcessorKey::new(
+			"fallback",
+			fallback_url.into(),
+		)),
 		health:            HealthStatus::Healthy,
 		min_response_time: 0,
 	};

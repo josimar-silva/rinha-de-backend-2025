@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use reqwest::Client;
 use rinha_de_backend::domain::health_status::HealthStatus;
 use rinha_de_backend::domain::payment_processor::{
@@ -63,14 +65,18 @@ async fn test_marks_processor_as_failing_when_unreachable() {
 	let router = InMemoryPaymentRouter::new();
 
 	router.update_processor_health(PaymentProcessor {
-		name:              "default".to_string(),
-		url:               default_url.clone(),
+		key:               Cow::Owned(PaymentProcessorKey::new(
+			"default",
+			default_url.clone().into(),
+		)),
 		health:            HealthStatus::Healthy,
 		min_response_time: 0,
 	});
 	router.update_processor_health(PaymentProcessor {
-		name:              "fallback".to_string(),
-		url:               fallback_url.clone(),
+		key:               Cow::Owned(PaymentProcessorKey::new(
+			"fallback",
+			fallback_url.clone().into(),
+		)),
 		health:            HealthStatus::Healthy,
 		min_response_time: 0,
 	});
@@ -112,14 +118,18 @@ async fn test_should_not_panic_an_error_occurs() {
 	let router = InMemoryPaymentRouter::new();
 
 	router.update_processor_health(PaymentProcessor {
-		name:              "default".to_string(),
-		url:               "http://another-non-existent-default:8080".to_string(),
+		key:               Cow::Owned(PaymentProcessorKey::new(
+			"default",
+			"http://another-non-existent-default:8080".into(),
+		)),
 		health:            HealthStatus::Healthy,
 		min_response_time: 0,
 	});
 	router.update_processor_health(PaymentProcessor {
-		name:              "fallback".to_string(),
-		url:               "http://another-non-existent-fallback:8080".to_string(),
+		key:               Cow::Owned(PaymentProcessorKey::new(
+			"fallback",
+			"http://another-non-existent-fallback:8080".into(),
+		)),
 		health:            HealthStatus::Healthy,
 		min_response_time: 0,
 	});

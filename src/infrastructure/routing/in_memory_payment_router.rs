@@ -30,7 +30,7 @@ impl InMemoryPaymentRouter {
 
 	pub fn update_processor_health(&self, processor: PaymentProcessor) {
 		let mut processors = self.processors.write().unwrap();
-		processors.insert(processor.name.clone(), processor);
+		processors.insert(processor.key.name.to_string(), processor);
 	}
 }
 
@@ -59,8 +59,8 @@ impl PaymentRouter for InMemoryPaymentRouter {
 				circuitbreaker_rs::State::Open
 			) {
 			return Some((
-				default_processor.url.clone(),
-				default_processor.name.clone(),
+				default_processor.key.url.to_string(),
+				default_processor.key.name.to_string(),
 				self.default_breaker.clone(),
 			));
 		}
@@ -73,8 +73,8 @@ impl PaymentRouter for InMemoryPaymentRouter {
 				circuitbreaker_rs::State::Open
 			) {
 			return Some((
-				fallback_processor.url.clone(),
-				fallback_processor.name.clone(),
+				fallback_processor.key.url.to_string(),
+				fallback_processor.key.name.to_string(),
 				self.fallback_breaker.clone(),
 			));
 		}
@@ -86,9 +86,13 @@ impl PaymentRouter for InMemoryPaymentRouter {
 #[cfg(test)]
 mod tests {
 
+	use std::borrow::Cow;
+
 	use circuitbreaker_rs::State;
 	use rinha_de_backend::domain::health_status::HealthStatus;
-	use rinha_de_backend::domain::payment_processor::PaymentProcessor;
+	use rinha_de_backend::domain::payment_processor::{
+		PaymentProcessor, PaymentProcessorKey,
+	};
 	use rinha_de_backend::domain::payment_router::PaymentRouter;
 	use rinha_de_backend::infrastructure::routing::in_memory_payment_router::InMemoryPaymentRouter;
 
@@ -96,16 +100,18 @@ mod tests {
 	async fn test_get_processor_for_payment_default_healthy() {
 		let router = InMemoryPaymentRouter::new();
 		let default_processor = PaymentProcessor {
-			name:              "default".to_string(),
-			url:               "http://default.com".to_string(),
+			key:               Cow::Owned(PaymentProcessorKey::new(
+				"default",
+				"http://default.com".into(),
+			)),
 			health:            HealthStatus::Healthy,
 			min_response_time: 50,
 		};
 		router.update_processor_health(default_processor.clone());
 
 		let (url, name, breaker) = router.get_processor_for_payment().await.unwrap();
-		assert_eq!(url, default_processor.url);
-		assert_eq!(name, default_processor.name);
+		assert_eq!(url, default_processor.key.url);
+		assert_eq!(name, default_processor.key.name);
 		assert_eq!(breaker.current_state(), State::Closed);
 	}
 
@@ -113,8 +119,10 @@ mod tests {
 	async fn test_get_processor_for_payment_default_unhealthy() {
 		let router = InMemoryPaymentRouter::new();
 		let default_processor = PaymentProcessor {
-			name:              "default".to_string(),
-			url:               "http://default.com".to_string(),
+			key:               Cow::Owned(PaymentProcessorKey::new(
+				"default",
+				"http://default.com".into(),
+			)),
 			health:            HealthStatus::Failing,
 			min_response_time: 50,
 		};
@@ -128,8 +136,10 @@ mod tests {
 	async fn test_get_processor_for_payment_default_slow() {
 		let router = InMemoryPaymentRouter::new();
 		let default_processor = PaymentProcessor {
-			name:              "default".to_string(),
-			url:               "http://default.com".to_string(),
+			key:               Cow::Owned(PaymentProcessorKey::new(
+				"default",
+				"http://default.com".into(),
+			)),
 			health:            HealthStatus::Healthy,
 			min_response_time: 150, // Too slow
 		};
@@ -143,8 +153,10 @@ mod tests {
 	async fn test_get_processor_for_payment_default_circuit_open() {
 		let router = InMemoryPaymentRouter::new();
 		let default_processor = PaymentProcessor {
-			name:              "default".to_string(),
-			url:               "http://default.com".to_string(),
+			key:               Cow::Owned(PaymentProcessorKey::new(
+				"default",
+				"http://default.com".into(),
+			)),
 			health:            HealthStatus::Healthy,
 			min_response_time: 50,
 		};
@@ -160,8 +172,10 @@ mod tests {
 	async fn test_get_processor_for_payment_fallback_healthy() {
 		let router = InMemoryPaymentRouter::new();
 		let fallback_processor = PaymentProcessor {
-			name:              "fallback".to_string(),
-			url:               "http://fallback.com".to_string(),
+			key:               Cow::Owned(PaymentProcessorKey::new(
+				"fallback",
+				"http://fallback.com".into(),
+			)),
 			health:            HealthStatus::Healthy,
 			min_response_time: 50,
 		};
@@ -169,16 +183,18 @@ mod tests {
 
 		// Ensure default is not chosen
 		let default_processor = PaymentProcessor {
-			name:              "default".to_string(),
-			url:               "http://default.com".to_string(),
+			key:               Cow::Owned(PaymentProcessorKey::new(
+				"default",
+				"http://default.com".into(),
+			)),
 			health:            HealthStatus::Failing, // Make default unhealthy
 			min_response_time: 50,
 		};
 		router.update_processor_health(default_processor.clone());
 
 		let (url, name, breaker) = router.get_processor_for_payment().await.unwrap();
-		assert_eq!(url, fallback_processor.url);
-		assert_eq!(name, fallback_processor.name);
+		assert_eq!(url, fallback_processor.key.url);
+		assert_eq!(name, fallback_processor.key.name);
 		assert_eq!(breaker.current_state(), State::Closed);
 	}
 
@@ -193,8 +209,10 @@ mod tests {
 	async fn test_update_processor_health() {
 		let router = InMemoryPaymentRouter::new();
 		let processor = PaymentProcessor {
-			name:              "test_processor".to_string(),
-			url:               "http://test.com".to_string(),
+			key:               Cow::Owned(PaymentProcessorKey::new(
+				"test_processor",
+				"http://test.com".into(),
+			)),
 			health:            HealthStatus::Healthy,
 			min_response_time: 100,
 		};
@@ -202,6 +220,6 @@ mod tests {
 
 		let processors = router.processors.read().unwrap();
 		assert!(processors.contains_key("test_processor"));
-		assert_eq!(processors["test_processor"].url, processor.url);
+		assert_eq!(processors["test_processor"].key.url, processor.key.url);
 	}
 }
