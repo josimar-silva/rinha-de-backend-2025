@@ -12,7 +12,7 @@ use crate::support::redis_container::get_test_redis_client;
 async fn test_payment_queue_push_and_pop() {
 	let redis_container = get_test_redis_client().await;
 	let redis_client = redis_container.client;
-	let payment_queue = PaymentQueue::new(redis_client.clone());
+	let payment_queue = PaymentQueue::new(redis_client.clone()).await;
 
 	let payment = Payment {
 		correlation_id: Uuid::new_v4(),
@@ -37,7 +37,7 @@ async fn test_payment_queue_push_and_pop() {
 async fn test_payment_queue_pop_empty() {
 	let redis_container = get_test_redis_client().await;
 	let redis_client = redis_container.client;
-	let payment_queue = PaymentQueue::new(redis_client.clone());
+	let payment_queue = PaymentQueue::new(redis_client.clone()).await;
 
 	let popped_message = payment_queue.pop().await.unwrap();
 
@@ -48,7 +48,7 @@ async fn test_payment_queue_pop_empty() {
 async fn test_payment_queue_multiple_pushes_and_pops() {
 	let redis_container = get_test_redis_client().await;
 	let redis_client = redis_container.client;
-	let payment_queue = PaymentQueue::new(redis_client.clone());
+	let payment_queue = PaymentQueue::new(redis_client.clone()).await;
 
 	let payment1 = Payment {
 		correlation_id: Uuid::new_v4(),
@@ -87,7 +87,7 @@ async fn test_payment_queue_multiple_pushes_and_pops() {
 async fn test_payment_queue_fault_tolerance() {
 	let redis_container = get_test_redis_client().await;
 	let redis_client = redis_container.client.clone();
-	let payment_queue = PaymentQueue::new(redis_client.clone());
+	let payment_queue = PaymentQueue::new(redis_client.clone()).await;
 
 	let mut conn = redis_client
 		.get_multiplexed_async_connection()
