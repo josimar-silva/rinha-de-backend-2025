@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use rinha_de_backend::infrastructure::config::settings::Config;
+use tokio::sync::mpsc;
 
 #[cfg(test)]
 #[actix_web::test]
@@ -15,6 +16,10 @@ async fn test_run_bind_error() {
 		report_url: None,
 	});
 
-	assert!(rinha_de_backend::run(dummy_config).await.is_err());
+	// Create a dummy MPSC channel for the test
+	let (sender, _receiver) = mpsc::channel(1);
+
+	// Attempt to bind to the same address, which should fail
+	assert!(rinha_de_backend::run(dummy_config, sender).await.is_err());
 	drop(listener);
 }
