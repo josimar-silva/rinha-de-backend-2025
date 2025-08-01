@@ -27,3 +27,4 @@ Process payment with a P99 of 5ms
 | [32cdeb9](https://github.com/josimar-silva/rinha-de-backend-2025/commit/32cdeb9a3013f7634200a12d252d1da6467f6bf8) | 2025-07-29T04:09:53Z | 1406.43ms | 8264 | 8714 | 8264 | 0 |
 | [abe997d](https://github.com/josimar-silva/rinha-de-backend-2025/commit/abe997dc223f1b93bfa010f5c91d00691fb831fe) | 2025-07-30T04:05:39Z | 1318ms | 7780 | 9161 | 7780 | 0 |
 | [7b77e4c](https://github.com/josimar-silva/rinha-de-backend-2025/commit/7b77e4c38d435ce30748c140cd5289f7c5a57c93) | 2025-07-31T04:04:49Z | 1312.38ms | 8002 | 9021 | 8002 | 0 |
+| [1591b81](https://github.com/josimar-silva/rinha-de-backend-2025/commit/1591b8134e320ff7ccd6486c587d29c086e23802) | 2025-08-01T04:16:07Z | 73.1ms | 7304 | 9555 | 7304 | 0 |
