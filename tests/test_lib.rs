@@ -14,6 +14,7 @@ async fn test_run_bind_error() {
 		fallback_payment_processor_url: "http://localhost:8081".into(),
 		server_keepalive: 60,
 		report_url: None,
+		payment_processor_worker_count: 4,
 	});
 
 	// Create a dummy MPSC channel for the test

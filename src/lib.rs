@@ -55,12 +55,14 @@ pub async fn run(
 	let process_payment_use_case =
 		ProcessPaymentUseCase::new(payment_repo.clone(), http_client.clone());
 
-	tokio::spawn(payment_processing_worker(
-		payment_queue.clone(),
-		payment_repo.clone(),
-		process_payment_use_case,
-		in_memory_router.clone(),
-	));
+	for _ in 0..config.payment_processor_worker_count {
+		tokio::spawn(payment_processing_worker(
+			payment_queue.clone(),
+			payment_repo.clone(),
+			process_payment_use_case.clone(),
+			in_memory_router.clone(),
+		));
+	}
 
 	info!("Starting Actix-Web server on 0.0.0.0:9999...");
 

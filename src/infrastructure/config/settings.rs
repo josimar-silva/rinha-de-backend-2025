@@ -13,6 +13,7 @@ pub struct Config {
 	pub fallback_payment_processor_url: Cow<'static, str>,
 	pub server_keepalive: u64,
 	pub report_url: Option<Cow<'static, str>>,
+	pub payment_processor_worker_count: usize,
 }
 
 impl Config {
@@ -64,6 +65,7 @@ mod tests {
 			);
 			env.insert("APP_SERVER_KEEPALIVE".into(), "120".into());
 			env.insert("APP_REPORT_URL".into(), "/tmp/reports".into());
+			env.insert("APP_PAYMENT_PROCESSOR_WORKER_COUNT".into(), "8".into());
 			env
 		}));
 
@@ -87,6 +89,7 @@ mod tests {
 		);
 		assert_eq!(config.server_keepalive, 120);
 		assert_eq!(config.report_url, Some(Cow::from("/tmp/reports")));
+		assert_eq!(config.payment_processor_worker_count, 8);
 	}
 
 	#[test]
@@ -106,6 +109,7 @@ mod tests {
 				"http://test_fallback_no_report/".into(),
 			);
 			env.insert("APP_SERVER_KEEPALIVE".into(), "120".into());
+			env.insert("APP_PAYMENT_PROCESSOR_WORKER_COUNT".into(), "4".into());
 			env
 		}));
 
@@ -123,6 +127,7 @@ mod tests {
 		);
 		assert_eq!(config.server_keepalive, 120);
 		assert_eq!(config.report_url, None);
+		assert_eq!(config.payment_processor_worker_count, 4);
 	}
 
 	#[test]
