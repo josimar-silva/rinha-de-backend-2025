@@ -107,7 +107,7 @@ jobs:
           SCORE=$(jq -r '.total_liquido' $RESULTS_FILE_PATH)
           COMMIT_URL="https://github.com/${{ github.repository }}/commit/${COMMIT_SHA}"
           FLAMEGRAPH_LINK="[Flamegraph](${{ steps.flamegraph-artifact.outputs.artifact-url }})"
-          RUN_LINK="[#${{ github.run_id }}]($RUN_URL)"
+          RUN_LINK="[#${{ github.run_number }}]($RUN_URL)"
 
           if [ ! -f "$PERF_FILE" ]; then
             echo "# Performance Test Results" > "$PERF_FILE"
