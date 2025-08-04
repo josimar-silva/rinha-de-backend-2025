@@ -82,12 +82,15 @@ jobs:
         with:
           name: partial-results-${{ github.sha }}.json
           path: ${{ env.RESULTS_FILE_PATH }}
+          compression-level: '0'
 
       - name: ⬆️ Upload Flamegraph
+        id: flamegraph-artifact
         uses: actions/upload-artifact@v4
         with:
           name: flamegraph-${{ github.sha }}.zip
           path: reports/**/*.svg
+          compression-level: 0
 
       - name: 📊 Process Performance Results
         run: |
@@ -102,18 +105,21 @@ jobs:
           LAG=$(jq -r '.lag.lag' $RESULTS_FILE_PATH)
           SCORE=$(jq -r '.total_liquido' $RESULTS_FILE_PATH)
           COMMIT_URL="https://github.com/${{ github.repository }}/commit/${COMMIT_SHA}"
+          FLAMEGRAPH_LINK="[Flamegraph](${{ steps.flamegraph-artifact.outputs.artifact-url }})"
 
           echo "Creating or appending data to perf.md"
-          
+
           if [ ! -f "$PERF_FILE" ]; then
             echo "# Performance Test Results" > "$PERF_FILE"
             echo "" >> "$PERF_FILE"
-            echo "| Commit | Timestamp | P99 (ms) | Success Requests | Failed Requests | Lag | Score |" >> "$PERF_FILE"
-            echo "|--------|-----------|----------|------------------|-----------------|-----|-------|" >> "$PERF_FILE"
+            echo "| Commit | Timestamp | P99 (ms) | Success Requests | Failed Requests | Lag | Score | Flamegraph |" >> "$PERF_FILE"
+            echo "|--------|-----------|----------|------------------|-----------------|-----|-------|------------|" >> "$PERF_FILE"
           fi
-
-          echo "| [${COMMIT_SHA::7}](${COMMIT_URL}) | ${TIMESTAMP} | ${P99} | ${SUCCESSFUL_REQUESTS} | ${FAILED_REQUESTS} | ${LAG} | ${SCORE} |" >> "$PERF_FILE"
           
+          NEW_LINE="| [${COMMIT_SHA::7}](${COMMIT_URL}) | ${TIMESTAMP} | ${P99} | ${SUCCESSFUL_REQUESTS} | ${FAILED_REQUESTS} | ${LAG} | ${SCORE} | ${FLAMEGRAPH_LINK} |"
+
+          echo "$NEW_LINE" >> "$PERF_FILE"
+
           echo "Data added to $PERF_FILE"
           cat "$PERF_FILE"
 
