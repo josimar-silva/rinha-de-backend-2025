@@ -10,6 +10,25 @@ Process payments with a P99 of 100ms
 - http://troubles.md/posts/rustfest-2018-workshop/
 - https://nnethercote.github.io/perf-book/build-configuration.html
 
+# Flamegraph Analysis
+
+## [#107](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16713859094/job/47303559607)
+
+Finally, got the [flamegraph](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16713859094/artifacts/3678343125) collection working. Yay!!!
+
+Overall, there is quite a bit of CPU time being consumed by the PaymentQueue operations.
+A good percentage of the time is being used to acquire the multiplexed connection to Redis.
+
+This has a huge impact on the Payments API handler, which is propagating the requests directly to Redis.
+Being locked waiting for the connection means more latency time.  
+Let's see how it performs after offloading the call to Redis to a MPSC channel. 
+
+### Backend 01
+![flamegraph-backend-01.svg](docs/flamegraphs/107/flamegraph-backend-01.svg)
+
+### Backend 02
+![flamegraph-backend-02.svg](docs/flamegraphs/107/flamegraph-backend-02.svg)
+
 # Performance Tests Results
 
 | Test Run | Commit SHA                                                                                                        | Timestamp            | Max. Requests | P99 (ms)            | Success Requests | Failed Requests | Lag  | Score | Flamegraph |
