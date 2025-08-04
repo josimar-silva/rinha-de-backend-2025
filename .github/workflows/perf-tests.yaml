@@ -112,11 +112,11 @@ jobs:
           if [ ! -f "$PERF_FILE" ]; then
             echo "# Performance Test Results" > "$PERF_FILE"
             echo "" >> "$PERF_FILE"
-            echo "| Test Run | Commit | Timestamp | P99 (ms) | Success Requests | Failed Requests | Lag | Score | Flamegraph |" >> "$PERF_FILE"
-            echo "|----------|--------|-----------|----------|------------------|-----------------|-----|-------|------------|" >> "$PERF_FILE"
+            echo "| Test Run | Commit | Timestamp | Max. Requests | P99 (ms) | Success Requests | Failed Requests | Lag | Score | Flamegraph |" >> "$PERF_FILE"
+            echo "|----------|--------|-----------|---------------|----------|------------------|-----------------|-----|-------|------------|" >> "$PERF_FILE"
           fi
 
-          NEW_LINE="| ${RUN_LINK} | [${COMMIT_SHA::7}](${COMMIT_URL}) | ${TIMESTAMP} | ${P99} | ${SUCCESSFUL_REQUESTS} | ${FAILED_REQUESTS} | ${LAG} | ${SCORE} | ${FLAMEGRAPH_LINK} |"
+          NEW_LINE="| ${RUN_LINK} | [${COMMIT_SHA::7}](${COMMIT_URL}) | ${TIMESTAMP} | ${{ vars.MAX_REQUESTS }} | ${P99} | ${SUCCESSFUL_REQUESTS} | ${FAILED_REQUESTS} | ${LAG} | ${SCORE} | ${FLAMEGRAPH_LINK} |"
 
           echo "$NEW_LINE" >> "$PERF_FILE"
 
