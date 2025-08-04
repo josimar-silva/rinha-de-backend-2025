@@ -1,10 +1,15 @@
+use std::time::Duration;
+
 use actix_web::{App, test, web};
 use rinha_de_backend::adapters::web::handlers::payments;
 use rinha_de_backend::adapters::web::schema::PaymentRequest;
 use rinha_de_backend::domain::payment::Payment;
+use rinha_de_backend::domain::payment_producer::PaymentProducer;
 use rinha_de_backend::domain::queue::Queue;
+use rinha_de_backend::infrastructure::queue::mpsc_payment_producer::MpscPaymentProducer;
 use rinha_de_backend::infrastructure::queue::redis_payment_queue::PaymentQueue;
 use rinha_de_backend::use_cases::create_payment::CreatePaymentUseCase;
+use tokio::sync::mpsc;
 use uuid::Uuid;
 
 mod support;
@@ -18,9 +23,14 @@ async fn test_payments_post_returns_success() {
 	let payment_queue = PaymentQueue::new(redis_client.clone());
 	let create_payment_use_case = CreatePaymentUseCase::new(payment_queue.clone());
 
+	let (payment_sender, mut payment_receiver) = mpsc::channel(1);
+	let mpsc_payment_producer = MpscPaymentProducer::new(payment_sender);
+
 	let app = test::init_service(
 		App::new()
-			.app_data(web::Data::new(create_payment_use_case.clone()))
+			.app_data(web::Data::new(
+				Box::new(mpsc_payment_producer.clone()) as Box<dyn PaymentProducer>
+			))
 			.service(payments),
 	)
 	.await;
@@ -38,6 +48,22 @@ async fn test_payments_post_returns_success() {
 
 	assert!(resp.status().is_success());
 
+	// Assert that the payment was sent to the MPSC channel
+	let received_payment =
+		tokio::time::timeout(Duration::from_secs(1), payment_receiver.recv())
+			.await
+			.expect("Did not receive payment from MPSC channel")
+			.expect("Channel closed");
+
+	assert_eq!(received_payment.correlation_id, payment_req.correlation_id);
+	assert_eq!(received_payment.amount, payment_req.amount);
+
+	// Now, simulate the worker pushing to Redis and verify
+	create_payment_use_case
+		.execute(received_payment)
+		.await
+		.unwrap();
+
 	let message = payment_queue.pop().await.unwrap().unwrap();
 	let deserialized_payment: Payment = message.body;
 
@@ -49,21 +75,21 @@ async fn test_payments_post_returns_success() {
 }
 
 #[actix_web::test]
-async fn test_payments_post_redis_failure() {
-	let redis_container = get_test_redis_client().await;
-	let redis_client = redis_container.client.clone();
-	let payment_queue = PaymentQueue::new(redis_client.clone());
-	let create_payment_use_case = CreatePaymentUseCase::new(payment_queue.clone());
+async fn test_payments_post_channel_closed() {
+	let (payment_sender, mut payment_receiver) = mpsc::channel(1);
+	let mpsc_payment_producer = MpscPaymentProducer::new(payment_sender);
+
+	// Close the receiver to simulate a channel closed error
+	payment_receiver.close();
 
 	let app = test::init_service(
 		App::new()
-			.app_data(web::Data::new(create_payment_use_case.clone()))
+			.app_data(web::Data::new(
+				Box::new(mpsc_payment_producer.clone()) as Box<dyn PaymentProducer>
+			))
 			.service(payments),
 	)
 	.await;
-
-	// Stop the redis container to simulate a connection failure
-	let _ = redis_container.container.stop().await;
 
 	let payment_req = PaymentRequest {
 		correlation_id: Uuid::new_v4(),

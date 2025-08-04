@@ -1,30 +1,29 @@
 use actix_web::{HttpResponse, Responder, ResponseError, post, web};
-use log::{info, warn};
+use log::warn;
 
 use crate::adapters::web::errors::ApiError;
 use crate::adapters::web::schema::{PaymentRequest, PaymentResponse};
-use crate::infrastructure::queue::redis_payment_queue::PaymentQueue;
-use crate::use_cases::create_payment::CreatePaymentUseCase;
-use crate::use_cases::dto::CreatePaymentCommand;
+use crate::domain::payment::Payment;
+use crate::domain::payment_producer::PaymentProducer;
 
 #[post("/payments")]
 pub async fn payments(
 	payload: web::Json<PaymentRequest>,
-	create_payment_use_case: web::Data<CreatePaymentUseCase<PaymentQueue>>,
+	payment_producer: web::Data<Box<dyn PaymentProducer>>,
 ) -> impl Responder {
-	let command = CreatePaymentCommand {
+	let payment = Payment {
 		correlation_id: payload.correlation_id,
 		amount:         payload.amount,
+		requested_at:   None,
+		processed_at:   None,
+		processed_by:   None,
 	};
 
-	match create_payment_use_case.execute(command).await {
-		Ok(_) => {
-			info!("Payment received and queued: {}", payload.correlation_id);
-			HttpResponse::Ok().json(PaymentResponse {
-				payment: payload.0,
-				status:  "queued".to_string(),
-			})
-		}
+	match payment_producer.send(payment).await {
+		Ok(_) => HttpResponse::Ok().json(PaymentResponse {
+			payment: payload.0,
+			status:  "queued".to_string(),
+		}),
 		Err(e) => {
 			warn!("Error processing payment: {e:?}");
 			ApiError::InternalServerError.error_response()

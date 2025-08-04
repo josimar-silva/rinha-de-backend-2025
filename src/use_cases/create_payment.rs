@@ -1,6 +1,5 @@
 use crate::domain::payment::Payment;
 use crate::domain::queue::{Message, Queue};
-use crate::use_cases::dto::CreatePaymentCommand;
 
 #[derive(Clone)]
 pub struct CreatePaymentUseCase<Q: Queue<Payment>> {
@@ -14,18 +13,10 @@ impl<Q: Queue<Payment>> CreatePaymentUseCase<Q> {
 
 	pub async fn execute(
 		&self,
-		command: CreatePaymentCommand,
+		payment: Payment,
 	) -> Result<(), Box<dyn std::error::Error + Send>> {
-		let payment = Payment {
-			correlation_id: command.correlation_id,
-			amount:         command.amount,
-			requested_at:   None,
-			processed_at:   None,
-			processed_by:   None,
-		};
-
 		self.payment_queue
-			.push(Message::with(command.correlation_id, payment))
+			.push(Message::with(payment.correlation_id, payment))
 			.await
 	}
 }
