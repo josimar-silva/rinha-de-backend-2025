@@ -32,7 +32,7 @@
   </a>
 </div>
 
-<div align="center">
+<div>
 </div>
 
 <div align="center">
@@ -61,7 +61,12 @@ It is designed to be robust and handle the instabilities of the payment processo
 
 ### Design
 
-WIP
+TODO
+
+### Performance results
+
+If you want to see the performance of this implementation and my notes on its
+ performance, check the [perf.md](perf.md) file.
 
 ## Running the Project
 
