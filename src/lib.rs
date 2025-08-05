@@ -14,6 +14,7 @@ pub mod use_cases;
 use crate::adapters::web::handlers::{payments, payments_purge, payments_summary};
 use crate::domain::payment::Payment;
 use crate::domain::payment_producer::PaymentProducer;
+use crate::infrastructure::config::redis::Redis;
 use crate::infrastructure::config::settings::Config;
 use crate::infrastructure::persistence::redis_payment_repository::RedisPaymentRepository;
 use crate::infrastructure::queue::mpsc_payment_producer::MpscPaymentProducer;
@@ -28,11 +29,9 @@ use crate::use_cases::purge_payments::PurgePaymentsUseCase;
 pub async fn run(
 	config: Arc<Config>,
 	payment_sender: mpsc::Sender<Payment>,
+	redis: Arc<Redis>,
 ) -> std::io::Result<()> {
 	env_logger::init();
-
-	let redis_client =
-		redis::Client::open(config.redis_url.as_ref()).expect("Invalid Redis URL");
 
 	let http_client = Client::new();
 
@@ -49,8 +48,8 @@ pub async fn run(
 	));
 
 	info!("Starting payment processing worker...");
-	let payment_queue = PaymentQueue::new(redis_client.clone());
-	let payment_repo = RedisPaymentRepository::new(redis_client.clone());
+	let payment_queue = PaymentQueue::new(Arc::clone(&redis));
+	let payment_repo = RedisPaymentRepository::new(Arc::clone(&redis));
 
 	let process_payment_use_case =
 		ProcessPaymentUseCase::new(payment_repo.clone(), http_client.clone());

@@ -3,6 +3,7 @@ use std::sync::Arc;
 #[cfg(feature = "perf")]
 use pprof::flamegraph::Options;
 use rinha_de_backend::domain::payment::Payment;
+use rinha_de_backend::infrastructure::config::redis::Redis;
 use rinha_de_backend::infrastructure::config::settings::Config;
 use rinha_de_backend::infrastructure::queue::redis_payment_queue::PaymentQueue;
 use rinha_de_backend::infrastructure::workers::mpsc_to_redis_worker::mpsc_to_redis_worker;
@@ -20,10 +21,9 @@ async fn main() -> std::io::Result<()> {
 		.unwrap();
 
 	let config = Arc::new(Config::load().expect("Failed to load configuration"));
+	let redis = Arc::new(Redis::new(config.redis_url.as_ref()).await.unwrap());
 
-	let redis_client =
-		redis::Client::open(config.redis_url.clone().as_ref()).unwrap();
-	let payment_queue = PaymentQueue::new(redis_client.clone());
+	let payment_queue = PaymentQueue::new(Arc::clone(&redis));
 	let create_payment_use_case = CreatePaymentUseCase::new(payment_queue.clone());
 
 	let (payment_sender, payment_receiver) = mpsc::channel::<Payment>(100_000);
@@ -33,7 +33,7 @@ async fn main() -> std::io::Result<()> {
 		create_payment_use_case.clone(),
 	));
 
-	let result = run(config.clone(), payment_sender).await;
+	let result = run(config.clone(), payment_sender, redis).await;
 
 	#[cfg(feature = "perf")]
 	if let Ok(report) = guard.report().build() {

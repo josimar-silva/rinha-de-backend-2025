@@ -58,6 +58,7 @@ pub async fn payment_processing_worker<Q, PR, R>(
 				if let Err(e) = queue.push(message).await {
 					error!("Failed to re-queue payment: {e}");
 				}
+				sleep(Duration::from_millis(250)).await;
 				continue;
 			}
 
@@ -80,6 +81,7 @@ pub async fn payment_processing_worker<Q, PR, R>(
 			if let Err(e) = queue.push(message).await {
 				error!("Failed to re-queue payment: {e}");
 			}
+			sleep(Duration::from_millis(250)).await;
 		}
 
 		info!("Message with id '{}' processed.", &message_id);

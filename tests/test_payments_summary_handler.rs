@@ -21,8 +21,8 @@ use crate::support::redis_container::get_test_redis_client;
 #[actix_web::test]
 async fn test_payments_summary_get_empty() {
 	let redis_container = get_test_redis_client().await;
-	let redis_client = redis_container.client.clone();
-	let redis_repo = RedisPaymentRepository::new(redis_client.clone());
+	let redis = redis_container.get_redis().await;
+	let redis_repo = RedisPaymentRepository::new(Arc::new(redis));
 	let get_payment_summary_use_case =
 		GetPaymentSummaryUseCase::new(redis_repo.clone());
 
@@ -51,8 +51,8 @@ async fn test_payments_summary_get_empty() {
 #[actix_web::test]
 async fn test_get_payments_summary_without_filter_returns_all_data() {
 	let redis_container = get_test_redis_client().await;
-	let redis_client = redis_container.client.clone();
-	let payment_repo = RedisPaymentRepository::new(redis_client.clone());
+	let redis = redis_container.get_redis().await;
+	let payment_repo = RedisPaymentRepository::new(Arc::new(redis.clone()));
 
 	let now = OffsetDateTime::now_utc();
 
@@ -89,7 +89,7 @@ async fn test_get_payments_summary_without_filter_returns_all_data() {
 		.await
 		.unwrap();
 
-	let redis_repo = RedisPaymentRepository::new(redis_client.clone());
+	let redis_repo = RedisPaymentRepository::new(Arc::new(redis));
 	let get_payment_summary_use_case =
 		GetPaymentSummaryUseCase::new(redis_repo.clone());
 
@@ -118,8 +118,8 @@ async fn test_get_payments_summary_without_filter_returns_all_data() {
 #[actix_web::test]
 async fn test_payments_summary_get_redis_failure() {
 	let redis_container = get_test_redis_client().await;
-	let redis_client = redis_container.client.clone();
-	let redis_repo = RedisPaymentRepository::new(redis_client.clone());
+	let redis = redis_container.get_redis().await;
+	let redis_repo = RedisPaymentRepository::new(Arc::new(redis));
 	let get_payment_summary_use_case =
 		GetPaymentSummaryUseCase::new(redis_repo.clone());
 
@@ -144,8 +144,8 @@ async fn test_payments_summary_get_redis_failure() {
 #[actix_web::test]
 async fn test_payments_summary_get_with_filter_simple_iso_8601() {
 	let redis_container = get_test_redis_client().await;
-	let redis_client = redis_container.client.clone();
-	let payment_repo = RedisPaymentRepository::new(redis_client.clone());
+	let redis = redis_container.get_redis().await;
+	let payment_repo = RedisPaymentRepository::new(Arc::new(redis));
 	let get_payment_summary_use_case =
 		GetPaymentSummaryUseCase::new(payment_repo.clone());
 
@@ -219,8 +219,8 @@ async fn test_payments_summary_get_with_filter_simple_iso_8601() {
 #[actix_web::test]
 async fn test_payments_summary_get_with_extended_iso_8601() {
 	let redis_container = get_test_redis_client().await;
-	let redis_client = redis_container.client.clone();
-	let payment_repo = RedisPaymentRepository::new(redis_client.clone());
+	let redis = redis_container.get_redis().await;
+	let payment_repo = RedisPaymentRepository::new(Arc::new(redis.clone()));
 
 	let now = OffsetDateTime::now_utc();
 
@@ -248,7 +248,7 @@ async fn test_payments_summary_get_with_extended_iso_8601() {
 		.await
 		.unwrap();
 
-	let redis_repo = RedisPaymentRepository::new(redis_client.clone());
+	let redis_repo = RedisPaymentRepository::new(Arc::new(redis));
 	let get_payment_summary_use_case =
 		GetPaymentSummaryUseCase::new(redis_repo.clone());
 
@@ -285,8 +285,8 @@ async fn test_payments_summary_get_with_extended_iso_8601() {
 #[actix_web::test]
 async fn test_redis_repository_concurrent_access() {
 	let redis_container = get_test_redis_client().await;
-	let redis_client = redis_container.client.clone();
-	let payment_repo = Arc::new(RedisPaymentRepository::new(redis_client.clone()));
+	let redis = redis_container.get_redis().await;
+	let payment_repo = Arc::new(RedisPaymentRepository::new(Arc::new(redis)));
 
 	const NUM_CONCURRENT_TASKS: usize = 50;
 	const NUM_ITERATIONS_PER_TASK: usize = 100;
@@ -342,8 +342,8 @@ async fn test_redis_repository_concurrent_access() {
 #[actix_web::test]
 async fn test_payments_summary_decimal_precision() {
 	let redis_container = get_test_redis_client().await;
-	let redis_client = redis_container.client.clone();
-	let payment_repo = RedisPaymentRepository::new(redis_client.clone());
+	let redis = redis_container.get_redis().await;
+	let payment_repo = RedisPaymentRepository::new(Arc::new(redis.clone()));
 
 	let now = OffsetDateTime::now_utc();
 
@@ -381,7 +381,7 @@ async fn test_payments_summary_decimal_precision() {
 		.await
 		.unwrap();
 
-	let redis_repo = RedisPaymentRepository::new(redis_client.clone());
+	let redis_repo = RedisPaymentRepository::new(Arc::new(redis));
 	let get_payment_summary_use_case =
 		GetPaymentSummaryUseCase::new(redis_repo.clone());
 

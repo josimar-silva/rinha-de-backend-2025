@@ -1,18 +1,20 @@
+use std::sync::Arc;
+
 use async_trait::async_trait;
-use redis::{AsyncCommands, Client};
+use redis::AsyncCommands;
 
 use crate::domain::payment::Payment;
 use crate::domain::queue::{Message, Queue};
-use crate::infrastructure::config::redis::PAYMENTS_QUEUE_KEY;
+use crate::infrastructure::config::redis::{PAYMENTS_QUEUE_KEY, Redis};
 
 #[derive(Clone)]
 pub struct PaymentQueue {
-	client: Client,
+	redis: Arc<Redis>,
 }
 
 impl PaymentQueue {
-	pub fn new(client: Client) -> Self {
-		Self { client }
+	pub fn new(redis: Arc<Redis>) -> Self {
+		Self { redis }
 	}
 }
 
@@ -21,12 +23,7 @@ impl Queue<Payment> for PaymentQueue {
 	async fn pop(
 		&self,
 	) -> Result<Option<Message<Payment>>, Box<dyn std::error::Error + Send>> {
-		let mut con = self
-			.client
-			.clone()
-			.get_multiplexed_async_connection()
-			.await
-			.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send>)?;
+		let mut con = self.redis.connection.as_ref().clone();
 
 		let popped_value: Option<(String, String)> = con
 			.brpop(PAYMENTS_QUEUE_KEY, 1.0)
@@ -50,12 +47,7 @@ impl Queue<Payment> for PaymentQueue {
 		&self,
 		message: Message<Payment>,
 	) -> Result<(), Box<dyn std::error::Error + Send>> {
-		let mut con = self
-			.client
-			.get_multiplexed_async_connection()
-			.await
-			.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send>)?;
-
+		let mut con = self.redis.connection.as_ref().clone();
 		let serialized_message = serde_json::to_string(&message)
 			.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send>)?;
 
