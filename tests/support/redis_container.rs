@@ -1,7 +1,6 @@
+use log::{error, info};
 use redis::AsyncCommands;
-use rinha_de_backend::infrastructure::config::redis::{
-	PAYMENTS_QUEUE_KEY, PROCESSED_PAYMENTS_SET_KEY,
-};
+use rinha_de_backend::infrastructure::config::redis::Redis;
 use testcontainers::GenericImage;
 use testcontainers::core::{ContainerPort, WaitFor};
 use testcontainers::runners::AsyncRunner;
@@ -14,6 +13,13 @@ pub struct RedisTestContainer {
 impl RedisTestContainer {
 	pub fn client(&self) -> &redis::Client {
 		&self.client
+	}
+
+	pub async fn get_redis(&self) -> Redis {
+		let redis_url =
+			format!("redis://{}", &self.client.get_connection_info().addr);
+
+		Redis::new(&redis_url).await.unwrap()
 	}
 }
 
@@ -31,22 +37,15 @@ pub async fn get_test_redis_client() -> RedisTestContainer {
 		.get_multiplexed_async_connection()
 		.await
 		.expect("Failed to connect to Redis");
-	// Clear Redis for a clean test environment
-	let _: () = con
-		.del(PAYMENTS_QUEUE_KEY)
-		.await
-		.expect("Failed to clear payments_queue");
-	let _: () = con
-		.del("payments_summary_default")
-		.await
-		.expect("Failed to clear payments_summary_default");
-	let _: () = con
-		.del("payments_summary_fallback")
-		.await
-		.expect("Failed to clear payments_summary_fallback");
-	let _: () = con
-		.del(PROCESSED_PAYMENTS_SET_KEY)
-		.await
-		.expect("Failed to clear processed_correlation_ids");
+
+	match AsyncCommands::flushdb::<String>(&mut con).await {
+		Ok(_) => {
+			info!("Redis database cleared successfully.");
+		}
+		Err(e) => {
+			error!("Redis database cleared failed: {e}");
+		}
+	}
+
 	RedisTestContainer { client, container }
 }
