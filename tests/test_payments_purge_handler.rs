@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use actix_web::{App, test, web};
 use rinha_de_backend::adapters::web::handlers::payments_purge;
 use rinha_de_backend::domain::repository::PaymentRepository;
@@ -15,8 +17,8 @@ use crate::support::redis_container::get_test_redis_client;
 #[actix_web::test]
 async fn test_payments_purge_returns_success() {
 	let redis_container = get_test_redis_client().await;
-	let redis_client = redis_container.client.clone();
-	let payment_repository = RedisPaymentRepository::new(redis_client.clone());
+	let redis = redis_container.get_redis().await;
+	let payment_repository = RedisPaymentRepository::new(Arc::new(redis));
 	let purge_payments_use_case =
 		PurgePaymentsUseCase::new(payment_repository.clone());
 

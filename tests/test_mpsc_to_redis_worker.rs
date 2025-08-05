@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::time::Duration;
 
 use rinha_de_backend::domain::payment::Payment;
@@ -16,8 +17,8 @@ use crate::support::redis_container::get_test_redis_client;
 async fn test_mpsc_to_redis_worker_happy_path() {
 	// Arrange
 	let redis_container = get_test_redis_client().await;
-	let redis_client = redis_container.client.clone();
-	let payment_queue = PaymentQueue::new(redis_client);
+	let redis = redis_container.get_redis().await;
+	let payment_queue = PaymentQueue::new(Arc::new(redis));
 	let create_payment_use_case = CreatePaymentUseCase::new(payment_queue.clone());
 	let (sender, receiver) = mpsc::channel(1);
 

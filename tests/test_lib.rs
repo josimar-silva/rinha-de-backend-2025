@@ -3,10 +3,16 @@ use std::sync::Arc;
 use rinha_de_backend::infrastructure::config::settings::Config;
 use tokio::sync::mpsc;
 
+mod support;
+use crate::support::redis_container::get_test_redis_client;
+
 #[cfg(test)]
 #[actix_web::test]
 async fn test_run_bind_error() {
 	let listener = std::net::TcpListener::bind("0.0.0.0:9999").unwrap();
+
+	let redis_container = get_test_redis_client().await;
+	let redis = redis_container.get_redis().await;
 
 	let dummy_config = Arc::new(Config {
 		redis_url: "redis://127.0.0.1/".into(),
@@ -21,6 +27,10 @@ async fn test_run_bind_error() {
 	let (sender, _receiver) = mpsc::channel(1);
 
 	// Attempt to bind to the same address, which should fail
-	assert!(rinha_de_backend::run(dummy_config, sender).await.is_err());
+	assert!(
+		rinha_de_backend::run(dummy_config, sender, Arc::new(redis))
+			.await
+			.is_err()
+	);
 	drop(listener);
 }

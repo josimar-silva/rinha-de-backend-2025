@@ -1,25 +1,29 @@
+use std::error::Error;
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use log::{error, info};
-use redis::{AsyncCommands, Client, Script};
+use redis::aio::MultiplexedConnection;
+use redis::{AsyncCommands, Script};
 use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
 
 use crate::domain::payment::Payment;
 use crate::domain::repository::PaymentRepository;
-use crate::infrastructure::config::redis::PROCESSED_PAYMENTS_SET_KEY;
+use crate::infrastructure::config::redis::{PROCESSED_PAYMENTS_SET_KEY, Redis};
 
 #[derive(Clone)]
 pub struct RedisPaymentRepository {
-	client: Client,
+	redis: Arc<Redis>,
 }
 
 impl RedisPaymentRepository {
-	pub fn new(client: Client) -> Self {
-		Self { client }
+	pub fn new(redis: Arc<Redis>) -> Self {
+		Self { redis }
 	}
 
 	async fn calculate_payments_summary_using_lua(
-		con: &mut redis::aio::MultiplexedConnection,
+		con: &mut MultiplexedConnection,
 		group: &str,
 		from_ts: i128,
 		to_ts: i128,
@@ -60,15 +64,8 @@ impl RedisPaymentRepository {
 
 #[async_trait]
 impl PaymentRepository for RedisPaymentRepository {
-	async fn save(
-		&self,
-		payment: Payment,
-	) -> Result<(), Box<dyn std::error::Error + Send>> {
-		let mut con = self
-			.client
-			.get_multiplexed_async_connection()
-			.await
-			.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send>)?;
+	async fn save(&self, payment: Payment) -> Result<(), Box<dyn Error + Send>> {
+		let mut con = self.redis.connection.as_ref().clone();
 
 		let payment_id = payment.correlation_id.to_string();
 		let payment_group = payment.processed_by.unwrap_or_default();
@@ -105,7 +102,7 @@ impl PaymentRepository for RedisPaymentRepository {
 			)
 			.query_async::<()>(&mut con)
 			.await
-			.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send>)?;
+			.map_err(|e| Box::new(e) as Box<dyn Error + Send>)?;
 
 		Ok(())
 	}
@@ -115,13 +112,9 @@ impl PaymentRepository for RedisPaymentRepository {
 		group: &str,
 		from_ts: OffsetDateTime,
 		to_ts: OffsetDateTime,
-	) -> Result<(usize, f64), Box<dyn std::error::Error + Send>> {
-		let mut con = self
-			.client
-			.clone()
-			.get_multiplexed_async_connection()
-			.await
-			.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send>)?;
+	) -> Result<(usize, f64), Box<dyn Error + Send>> {
+		let mut con = self.redis.connection.as_ref().clone();
+
 		let (req, amt) = Self::calculate_payments_summary_using_lua(
 			&mut con,
 			group,
@@ -129,7 +122,7 @@ impl PaymentRepository for RedisPaymentRepository {
 			to_ts.unix_timestamp_nanos(),
 		)
 		.await
-		.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send>)?;
+		.map_err(|e| Box::new(e) as Box<dyn Error + Send>)?;
 		Ok((req, amt))
 	}
 
@@ -137,12 +130,8 @@ impl PaymentRepository for RedisPaymentRepository {
 		&self,
 		group: &str,
 		payment_id: &str,
-	) -> Result<Payment, Box<dyn std::error::Error + Send>> {
-		let mut con = self
-			.client
-			.get_multiplexed_async_connection()
-			.await
-			.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send>)?;
+	) -> Result<Payment, Box<dyn Error + Send>> {
+		let mut con = self.redis.connection.as_ref().clone();
 
 		let payment_key = format!("payment_summary:{group}:{payment_id}");
 		log::debug!("Retrieving payment summary for key: {}", payment_key);
@@ -181,13 +170,8 @@ impl PaymentRepository for RedisPaymentRepository {
 	async fn is_already_processed(
 		&self,
 		payment_id: &str,
-	) -> Result<bool, Box<dyn std::error::Error + Send>> {
-		let mut con = self
-			.client
-			.clone()
-			.get_multiplexed_async_connection()
-			.await
-			.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send>)?;
+	) -> Result<bool, Box<dyn Error + Send>> {
+		let mut con = self.redis.connection.as_ref().clone();
 
 		let is_already_processed: Option<f64> = con
 			.zscore(PROCESSED_PAYMENTS_SET_KEY, payment_id)
@@ -197,21 +181,17 @@ impl PaymentRepository for RedisPaymentRepository {
 		Ok(is_already_processed.is_some())
 	}
 
-	async fn clear(&self) -> Result<(), Box<dyn std::error::Error + Send>> {
-		let mut con = self
-			.client
-			.get_multiplexed_async_connection()
-			.await
-			.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send>)?;
+	async fn clear(&self) -> Result<(), Box<dyn Error + Send>> {
+		let mut con = self.redis.connection.as_ref().clone();
 
-		match redis::AsyncCommands::flushdb::<String>(&mut con).await {
+		match AsyncCommands::flushdb::<String>(&mut con).await {
 			Ok(_) => {
 				info!("Redis database cleared successfully.");
 				Ok(())
 			}
 			Err(e) => {
 				error!("Redis database cleared failed: {e}");
-				Err(Box::new(e) as Box<dyn std::error::Error + Send>)
+				Err(Box::new(e) as Box<dyn Error + Send>)
 			}
 		}
 	}

@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::time::Duration;
 
 use actix_web::{App, test, web};
@@ -19,8 +20,8 @@ use crate::support::redis_container::get_test_redis_client;
 #[actix_web::test]
 async fn test_payments_post_returns_success() {
 	let redis_container = get_test_redis_client().await;
-	let redis_client = redis_container.client.clone();
-	let payment_queue = PaymentQueue::new(redis_client.clone());
+	let redis = redis_container.get_redis().await;
+	let payment_queue = PaymentQueue::new(Arc::new(redis.clone()));
 	let create_payment_use_case = CreatePaymentUseCase::new(payment_queue.clone());
 
 	let (payment_sender, mut payment_receiver) = mpsc::channel(1);

@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::time::Duration;
 
 use circuitbreaker_rs::{CircuitBreaker, DefaultPolicy, State};
@@ -17,8 +18,8 @@ use crate::support::redis_container::get_test_redis_client;
 #[tokio::test]
 async fn test_process_payment_success() {
 	let redis_container = get_test_redis_client().await;
-	let redis_client = redis_container.client.clone();
-	let payment_repo = RedisPaymentRepository::new(redis_client.clone());
+	let redis = redis_container.get_redis().await;
+	let payment_repo = RedisPaymentRepository::new(Arc::new(redis));
 	let (default_processor_container, _) = setup_payment_processors().await;
 	let default_url = default_processor_container.url.clone();
 	let http_client = Client::builder()
@@ -58,8 +59,8 @@ async fn test_process_payment_success() {
 #[tokio::test]
 async fn test_process_payment_duplicate_returns_false() {
 	let redis_container = get_test_redis_client().await;
-	let redis_client = redis_container.client.clone();
-	let payment_repo = RedisPaymentRepository::new(redis_client.clone());
+	let redis = redis_container.get_redis().await;
+	let payment_repo = RedisPaymentRepository::new(Arc::new(redis));
 	let (default_processor_container, _) = setup_payment_processors().await;
 	let default_url = default_processor_container.url.clone();
 	let http_client = Client::builder()
@@ -114,8 +115,8 @@ async fn test_process_payment_duplicate_returns_false() {
 #[tokio::test]
 async fn test_process_payment_500_returns_false() {
 	let redis_container = get_test_redis_client().await;
-	let redis_client = redis_container.client.clone();
-	let payment_repo = RedisPaymentRepository::new(redis_client.clone());
+	let redis = redis_container.get_redis().await;
+	let payment_repo = RedisPaymentRepository::new(Arc::new(redis));
 	let (default_processor_container, _) = setup_payment_processors().await;
 	let default_url = default_processor_container.url.clone();
 	let http_client = Client::builder()
@@ -167,8 +168,8 @@ async fn test_process_payment_500_returns_false() {
 #[tokio::test]
 async fn test_process_payment_circuit_breaker_open_returns_false() {
 	let redis_container = get_test_redis_client().await;
-	let redis_client = redis_container.client.clone();
-	let payment_repo = RedisPaymentRepository::new(redis_client.clone());
+	let redis = redis_container.get_redis().await;
+	let payment_repo = RedisPaymentRepository::new(Arc::new(redis));
 	let (default_processor_container, _) = setup_payment_processors().await;
 	let default_url = default_processor_container.url.clone();
 	let http_client = Client::builder()
@@ -210,8 +211,8 @@ async fn test_process_payment_circuit_breaker_open_returns_false() {
 #[tokio::test]
 async fn test_process_payment_unreachable_service_opens_circuit_breaker() {
 	let redis_container = get_test_redis_client().await;
-	let redis_client = redis_container.client.clone();
-	let payment_repo = RedisPaymentRepository::new(redis_client.clone());
+	let redis = redis_container.get_redis().await;
+	let payment_repo = RedisPaymentRepository::new(Arc::new(redis));
 	let http_client = Client::builder()
 		.timeout(Duration::from_millis(100))
 		.build()

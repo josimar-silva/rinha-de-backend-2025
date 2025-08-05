@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use rinha_de_backend::domain::payment::Payment;
 use rinha_de_backend::domain::queue::{Message, Queue};
 use rinha_de_backend::infrastructure::config::redis::PAYMENTS_QUEUE_KEY;
@@ -11,8 +13,8 @@ use crate::support::redis_container::get_test_redis_client;
 #[tokio::test]
 async fn test_payment_queue_push_and_pop() {
 	let redis_container = get_test_redis_client().await;
-	let redis_client = redis_container.client;
-	let payment_queue = PaymentQueue::new(redis_client.clone());
+	let redis = redis_container.get_redis().await;
+	let payment_queue = PaymentQueue::new(Arc::new(redis));
 
 	let payment = Payment {
 		correlation_id: Uuid::new_v4(),
@@ -36,8 +38,8 @@ async fn test_payment_queue_push_and_pop() {
 #[tokio::test]
 async fn test_payment_queue_pop_empty() {
 	let redis_container = get_test_redis_client().await;
-	let redis_client = redis_container.client;
-	let payment_queue = PaymentQueue::new(redis_client.clone());
+	let redis = redis_container.get_redis().await;
+	let payment_queue = PaymentQueue::new(Arc::new(redis));
 
 	let popped_message = payment_queue.pop().await.unwrap();
 
@@ -47,8 +49,8 @@ async fn test_payment_queue_pop_empty() {
 #[tokio::test]
 async fn test_payment_queue_multiple_pushes_and_pops() {
 	let redis_container = get_test_redis_client().await;
-	let redis_client = redis_container.client;
-	let payment_queue = PaymentQueue::new(redis_client.clone());
+	let redis = redis_container.get_redis().await;
+	let payment_queue = PaymentQueue::new(Arc::new(redis));
 
 	let payment1 = Payment {
 		correlation_id: Uuid::new_v4(),
@@ -86,13 +88,10 @@ async fn test_payment_queue_multiple_pushes_and_pops() {
 #[tokio::test]
 async fn test_payment_queue_fault_tolerance() {
 	let redis_container = get_test_redis_client().await;
-	let redis_client = redis_container.client.clone();
-	let payment_queue = PaymentQueue::new(redis_client.clone());
+	let redis = redis_container.get_redis().await;
+	let payment_queue = PaymentQueue::new(Arc::new(redis.clone()));
 
-	let mut conn = redis_client
-		.get_multiplexed_async_connection()
-		.await
-		.unwrap();
+	let mut conn = redis.connection.as_ref().clone();
 
 	redis::cmd("LPUSH")
 		.arg(PAYMENTS_QUEUE_KEY)
