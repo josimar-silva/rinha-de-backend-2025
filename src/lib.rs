@@ -33,7 +33,12 @@ pub async fn run(
 ) -> std::io::Result<()> {
 	env_logger::init();
 
-	let http_client = Client::new();
+	let http_client = Client::builder()
+		.connect_timeout(Duration::from_millis(100))
+		.timeout(Duration::from_millis(100))
+		.pool_idle_timeout(Duration::from_secs(30))
+		.build()
+		.unwrap();
 
 	let in_memory_router = InMemoryPaymentRouter::new(
 		config.get_default_key(),
