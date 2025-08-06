@@ -45,6 +45,37 @@ Let's see how we can decrease the lag next.
 ### Backend 02
 ![flamegraph-backend-02.svg](docs/flamegraphs/108/flamegraph-backend-02.svg)
 
+## [#109](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16729766895)
+
+On [c5c68fc](https://github.com/josimar-silva/rinha-de-backend-2025/commit/c5c68fc2e6599bd15fbbb3ed0b1d07e65ade473f), we introduce
+multiple instances of the `payment_processing_worker` to increase the throughput of payment processing.
+The change had no effect on the `lag`. The bottleneck points to the Redis connection acquiring logic.
+
+Instead of reusing the multiplexed connection, PaymentQueue and PaymentRepository, we are acquiring a new connection from
+the client on every operation, which is quite inefficient.
+In hindsight, this was a big oversight during the implementation 🤦🏽. But hey, that's why we have automated performance tests 😌.
+
+### Backend 01
+![flamegraph-backend-01.svg](docs/flamegraphs/109/flamegraph-backend-01.svg)
+
+### Backend 02
+![flamegraph-backend-02.svg](docs/flamegraphs/109/flamegraph-backend-02.svg)
+
+## [#111](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16756984103)
+
+With [#19](https://github.com/josimar-silva/rinha-de-backend-2025/pull/19), we introduced a more efficient 
+way of handling multiplexed connections from Redis and safely (using [Arc](https://doc.rust-lang.org/book/ch16-03-shared-state.html?highlight=Arc#atomic-reference-counting-with-arct)) shared.
+
+This change drastically reduced the `lag`, as can be seen in the test results.
+
+There's a bit of contention with Redis connection, let's see if we can improve it even more and reduce the `lag` to **0**.
+
+### Backend 01
+![flamegraph-backend-01.svg](docs/flamegraphs/111/flamegraph-backend-01.svg)
+
+### Backend 02
+![flamegraph-backend-02.svg](docs/flamegraphs/111/flamegraph-backend-02.svg)
+
 
 # Performance Tests Results
 
@@ -70,7 +101,7 @@ Let's see how we can decrease the lag next.
 | [#106](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16678910803) | [816e9ce](https://github.com/josimar-silva/rinha-de-backend-2025/commit/816e9ce0f52028bf131e49236ff2a11ea7c405bf) | 2025-08-01T15:28:02Z | 1000          | 1335.23ms           | 8119             | 8987            | 8119  | 0                  | [Flamegraph](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16678910803/artifacts/3668455362) |
 | [#107](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16713859094) | [bcd7241](https://github.com/josimar-silva/rinha-de-backend-2025/commit/bcd724190efbb55af38c7387fe5adf2cbbe067e6) | 2025-08-04T04:18:30Z | 1000          | 81.85ms             | 7332             | 9542            | 7332  | 0                  | [Flamegraph](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16713859094/artifacts/3678343125) |
 | [#108](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16727183039) | [a8b13cc](https://github.com/josimar-silva/rinha-de-backend-2025/commit/a8b13cca38f66c2e38ef0e954cf143cbae0b2e34) | 2025-08-04T15:20:26Z | 1000          | 49.73ms             | 30231            | 0               | 22423 | 135610.53999999244 | [Flamegraph](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16727183039/artifacts/3682892137) |
-| [#109](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16729766895) | [c5c68fc](https://github.com/josimar-silva/rinha-de-backend-2025/commit/c5c68fc2e6599bd15fbbb3ed0b1d07e65ade473f) | 2025-08-04T17:22:33Z | 1000 | 49ms | 30359 | 0 | 22528 | 137159.7549999934 | [Flamegraph](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16729766895/artifacts/3683929073) |
-| [#110](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16740294991) | [b6abb71](https://github.com/josimar-silva/rinha-de-backend-2025/commit/b6abb71bcd6bc8893106773e737241660e7b5e2c) | 2025-08-05T04:09:59Z | 1000 | 51.32ms | 30229 | 0 | 21983 | 144911.79999999434 | [Flamegraph](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16740294991/artifacts/3687513186) |
-| [#111](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16756984103) | [203d983](https://github.com/josimar-silva/rinha-de-backend-2025/commit/203d983da66ec5c548d827aa4cdb0e6689fae8bf) | 2025-08-05T17:34:45Z | 1000 | 3.23ms | 30448 | 0 | 419 | 645279.7482002105 | [Flamegraph](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16756984103/artifacts/3693475527) |
-| [#112](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16767258714) | [230eb14](https://github.com/josimar-silva/rinha-de-backend-2025/commit/230eb14c86c9cc1c7b28f32888622ec2fe6ed2c6) | 2025-08-06T04:07:13Z | 1000 | 3.99ms | 30439 | 0 | 272 | 636443.2527002069 | [Flamegraph](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16767258714/artifacts/3697231226) |
+| [#109](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16729766895) | [c5c68fc](https://github.com/josimar-silva/rinha-de-backend-2025/commit/c5c68fc2e6599bd15fbbb3ed0b1d07e65ade473f) | 2025-08-04T17:22:33Z | 1000          | 49ms                | 30359            | 0               | 22528 | 137159.7549999934  | [Flamegraph](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16729766895/artifacts/3683929073) |
+| [#110](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16740294991) | [b6abb71](https://github.com/josimar-silva/rinha-de-backend-2025/commit/b6abb71bcd6bc8893106773e737241660e7b5e2c) | 2025-08-05T04:09:59Z | 1000          | 51.32ms             | 30229            | 0               | 21983 | 144911.79999999434 | [Flamegraph](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16740294991/artifacts/3687513186) |
+| [#111](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16756984103) | [203d983](https://github.com/josimar-silva/rinha-de-backend-2025/commit/203d983da66ec5c548d827aa4cdb0e6689fae8bf) | 2025-08-05T17:34:45Z | 1000          | 3.23ms              | 30448            | 0               | 419   | 645279.7482002105  | [Flamegraph](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16756984103/artifacts/3693475527) |
+| [#112](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16767258714) | [230eb14](https://github.com/josimar-silva/rinha-de-backend-2025/commit/230eb14c86c9cc1c7b28f32888622ec2fe6ed2c6) | 2025-08-06T04:07:13Z | 1000          | 3.99ms              | 30439            | 0               | 272   | 636443.2527002069  | [Flamegraph](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16767258714/artifacts/3697231226) |
