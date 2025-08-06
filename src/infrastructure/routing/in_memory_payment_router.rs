@@ -1,4 +1,5 @@
 use std::sync::{Arc, RwLock};
+use std::time::Duration;
 
 use async_trait::async_trait;
 use circuitbreaker_rs::{CircuitBreaker, DefaultPolicy, State};
@@ -36,11 +37,16 @@ impl InMemoryPaymentRouter {
 				DefaultPolicy,
 				PaymentProcessingError,
 			>::builder()
+			.failure_threshold(0.1)
+			.min_throughput(5)
+			.cooldown(Duration::from_secs(5))
+			.failure_threshold(1.0)
 			.build(),
 			fallback_breaker:   CircuitBreaker::<
 				DefaultPolicy,
 				PaymentProcessingError,
 			>::builder()
+			.cooldown(Duration::from_secs(5))
 			.build(),
 		}
 	}
