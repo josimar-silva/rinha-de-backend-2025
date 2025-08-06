@@ -76,6 +76,22 @@ There's a bit of contention with Redis connection, let's see if we can improve i
 ### Backend 02
 ![flamegraph-backend-02.svg](docs/flamegraphs/111/flamegraph-backend-02.svg)
 
+## [#115](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16772589656)
+
+By using [dedicated multiplexed](https://github.com/josimar-silva/rinha-de-backend-2025/commit/35884a2bf0769351520675383e3533788b47fee8) for workers
+and payment producers, we removed connection contention, which has been a bottleneck so far.
+
+This change reduced the `lag` to **0**. Yay!!!
+
+Now, the flamegraphs shows quite a bit of CPU time being used on serialization.
+Let's see if we can improve that next.
+
+### Backend 01
+![flamegraph-backend-01.svg](docs/flamegraphs/115/flamegraph-backend-01.svg)
+
+### Backend 02
+![flamegraph-backend-02.svg](docs/flamegraphs/115/flamegraph-backend-02.svg)
+
 
 # Performance Tests Results
 
@@ -106,4 +122,4 @@ There's a bit of contention with Redis connection, let's see if we can improve i
 | [#111](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16756984103) | [203d983](https://github.com/josimar-silva/rinha-de-backend-2025/commit/203d983da66ec5c548d827aa4cdb0e6689fae8bf) | 2025-08-05T17:34:45Z | 1000          | 3.23ms              | 30448            | 0               | 419   | 645279.7482002105  | [Flamegraph](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16756984103/artifacts/3693475527) |
 | [#112](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16767258714) | [230eb14](https://github.com/josimar-silva/rinha-de-backend-2025/commit/230eb14c86c9cc1c7b28f32888622ec2fe6ed2c6) | 2025-08-06T04:07:13Z | 1000          | 3.99ms              | 30439            | 0               | 272   | 636443.2527002069  | [Flamegraph](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16767258714/artifacts/3697231226) |
 | [#114](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16772077627) | [1175944](https://github.com/josimar-silva/rinha-de-backend-2025/commit/117594497da97a68bc51eccb07fc50864d46b412) | 2025-08-06T08:47:28Z | 1000          | 4.24ms              | 30459            | 0               | 0     | 642058.0377002069  | [Flamegraph](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16772077627/artifacts/3698777157) |
-| [#115](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16772589656) | [3fc22bf](https://github.com/josimar-silva/rinha-de-backend-2025/commit/3fc22bf0ce265ba4518f7f8759e4d97791072e02) | 2025-08-06T09:09:59Z | 1000 | 3.51ms | 30460 | 0 | 0 | 647743.9055002088 | [Flamegraph](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16772589656/artifacts/3698954567) |
+| [#115](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16772589656) | [3fc22bf](https://github.com/josimar-silva/rinha-de-backend-2025/commit/3fc22bf0ce265ba4518f7f8759e4d97791072e02) | 2025-08-06T09:09:59Z | 1000          | 3.51ms              | 30460            | 0               | 0     | 647743.9055002088  | [Flamegraph](https://github.com/josimar-silva/rinha-de-backend-2025/actions/runs/16772589656/artifacts/3698954567) |
