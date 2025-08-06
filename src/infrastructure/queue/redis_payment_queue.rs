@@ -25,19 +25,19 @@ impl Queue<Payment> for PaymentQueue {
 	) -> Result<Option<Message<Payment>>, Box<dyn std::error::Error + Send>> {
 		let mut con = self.redis.connection.as_ref().clone();
 
-		let popped_value: Option<(String, String)> = con
+		let popped_value: Option<(String, Vec<u8>)> = con
 			.brpop(PAYMENTS_QUEUE_KEY, 1.0)
 			.await
 			.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send>)?;
 
-		let message_json =
+		let message_bytes =
 			if let Some((_queue_name, serialized_message)) = popped_value {
 				serialized_message
 			} else {
 				return Ok(None);
 			};
 
-		let message: Message<Payment> = serde_json::from_str(&message_json)
+		let message: Message<Payment> = rmp_serde::from_slice(&message_bytes)
 			.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send>)?;
 
 		Ok(Some(message))
@@ -48,7 +48,7 @@ impl Queue<Payment> for PaymentQueue {
 		message: Message<Payment>,
 	) -> Result<(), Box<dyn std::error::Error + Send>> {
 		let mut con = self.redis.connection.as_ref().clone();
-		let serialized_message = serde_json::to_string(&message)
+		let serialized_message = rmp_serde::to_vec(&message)
 			.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send>)?;
 
 		let _: () = con

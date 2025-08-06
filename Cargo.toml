@@ -27,6 +27,7 @@ config = "0.15.13"
 async-trait = "0.1"
 circuitbreaker-rs = { version = "0.1.1", features = ["async"] }
 pprof = { version = "0.15.0", features = ["flamegraph"], optional = true }
+rmp-serde = "1.3.0"
 
 [dev-dependencies]
 actix-web = { version = "4", features = ["macros"] }
