@@ -130,10 +130,12 @@ async fn test_payment_processing_worker_fallback_success() {
 	// Set up processor health
 	let default_processor = PaymentProcessor {
 		key:               Arc::clone(&default_key),
-		health:            HealthStatus::Failing,
-		min_response_time: 10000,
+		health:            HealthStatus::Healthy, /* Healthy, but breaker will be
+		                                           * open */
+		min_response_time: 10,
 	};
 	router.update_processor_health(default_processor);
+	router.default_breaker.force_open(); // Force open to trigger fallback
 
 	let fallback_processor = PaymentProcessor {
 		key:               Arc::clone(&fallback_key),

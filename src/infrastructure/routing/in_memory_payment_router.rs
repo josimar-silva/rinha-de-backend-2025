@@ -1,7 +1,7 @@
 use std::sync::{Arc, RwLock};
 
 use async_trait::async_trait;
-use circuitbreaker_rs::{CircuitBreaker, DefaultPolicy};
+use circuitbreaker_rs::{CircuitBreaker, DefaultPolicy, State};
 
 use crate::domain::health_status::HealthStatus;
 use crate::domain::payment_processor::{PaymentProcessor, PaymentProcessorKey};
@@ -76,33 +76,35 @@ impl PaymentRouter for InMemoryPaymentRouter {
 		CircuitBreaker<DefaultPolicy, PaymentProcessingError>,
 	)> {
 		let default_processor = self.default_processor.read().unwrap();
+		let default_breaker_is_open =
+			matches!(self.default_breaker.current_state(), State::Open);
 
 		if default_processor.health.is_healthy() &&
 			default_processor.min_response_time < 100 &&
-			!matches!(
-				self.default_breaker.current_state(),
-				circuitbreaker_rs::State::Open
-			) {
+			!default_breaker_is_open
+		{
 			return Some((
 				default_processor.key.clone(),
 				self.default_breaker.clone(),
 			));
 		}
 
-		let fallback_processor = self.fallback_processor.read().unwrap();
-
-		if fallback_processor.health.is_healthy() &&
-			fallback_processor.min_response_time < 100 &&
-			!matches!(
-				self.fallback_breaker.current_state(),
-				circuitbreaker_rs::State::Open
-			) {
-			return Some((
-				fallback_processor.key.clone(),
-				self.fallback_breaker.clone(),
-			));
+		// Only consider fallback if the default's circuit breaker is open
+		if default_breaker_is_open {
+			let fallback_processor = self.fallback_processor.read().unwrap();
+			if fallback_processor.health.is_healthy() &&
+				fallback_processor.min_response_time < 100 &&
+				!matches!(self.fallback_breaker.current_state(), State::Open)
+			{
+				return Some((
+					fallback_processor.key.clone(),
+					self.fallback_breaker.clone(),
+				));
+			}
 		}
 
+		// If default is just slow/unhealthy but the breaker is not open,
+		// return None to force a re-queue and wait for it to recover.
 		None
 	}
 }
@@ -133,67 +135,81 @@ mod tests {
 		router.update_processor_health(default_processor.clone());
 
 		let (key, breaker) = router.get_processor_for_payment().await.unwrap();
-		assert_eq!(key.url, default_processor.key.url);
-		assert_eq!(key.name, default_processor.key.name);
+		assert_eq!(key.name, "default");
 		assert_eq!(breaker.current_state(), State::Closed);
 	}
 
 	#[tokio::test]
-	async fn test_get_processor_for_payment_default_unhealthy() {
+	async fn test_get_processor_for_payment_default_unhealthy_but_breaker_closed_waits()
+	 {
 		let router = InMemoryPaymentRouter::default();
-		let default_processor = PaymentProcessor {
+		// Default is unhealthy
+		router.update_processor_health(PaymentProcessor {
 			key:               Arc::new(PaymentProcessorKey::new(
 				"default",
 				"http://default.com".into(),
 			)),
 			health:            HealthStatus::Failing,
 			min_response_time: 50,
-		};
-		router.update_processor_health(default_processor.clone());
+		});
+		// Fallback is healthy
+		router.update_processor_health(PaymentProcessor {
+			key:               Arc::new(PaymentProcessorKey::new(
+				"fallback",
+				"http://fallback.com".into(),
+			)),
+			health:            HealthStatus::Healthy,
+			min_response_time: 50,
+		});
 
+		// Should return None to wait for default to recover, since its breaker is
+		// not open
 		let result = router.get_processor_for_payment().await;
 		assert!(result.is_none());
 	}
 
 	#[tokio::test]
-	async fn test_get_processor_for_payment_default_slow() {
+	async fn test_get_processor_for_payment_default_slow_but_breaker_closed_waits() {
 		let router = InMemoryPaymentRouter::default();
-		let default_processor = PaymentProcessor {
+		// Default is slow
+		router.update_processor_health(PaymentProcessor {
 			key:               Arc::new(PaymentProcessorKey::new(
 				"default",
 				"http://default.com".into(),
 			)),
 			health:            HealthStatus::Healthy,
 			min_response_time: 150, // Too slow
-		};
-		router.update_processor_health(default_processor.clone());
+		});
+		// Fallback is healthy
+		router.update_processor_health(PaymentProcessor {
+			key:               Arc::new(PaymentProcessorKey::new(
+				"fallback",
+				"http://fallback.com".into(),
+			)),
+			health:            HealthStatus::Healthy,
+			min_response_time: 50,
+		});
 
+		// Should return None to wait for default to recover
 		let result = router.get_processor_for_payment().await;
 		assert!(result.is_none());
 	}
 
 	#[tokio::test]
-	async fn test_get_processor_for_payment_default_circuit_open() {
+	async fn test_get_processor_for_payment_default_circuit_open_uses_fallback() {
 		let router = InMemoryPaymentRouter::default();
-		let default_processor = PaymentProcessor {
+		// Default is healthy, but its breaker is open
+		router.update_processor_health(PaymentProcessor {
 			key:               Arc::new(PaymentProcessorKey::new(
 				"default",
 				"http://default.com".into(),
 			)),
 			health:            HealthStatus::Healthy,
 			min_response_time: 50,
-		};
-		router.update_processor_health(default_processor.clone());
-
+		});
 		router.default_breaker.force_open();
 
-		let result = router.get_processor_for_payment().await;
-		assert!(result.is_none());
-	}
-
-	#[tokio::test]
-	async fn test_get_processor_for_payment_fallback_healthy() {
-		let router = InMemoryPaymentRouter::default();
+		// Fallback is healthy
 		let fallback_processor = PaymentProcessor {
 			key:               Arc::new(PaymentProcessorKey::new(
 				"fallback",
@@ -204,21 +220,40 @@ mod tests {
 		};
 		router.update_processor_health(fallback_processor.clone());
 
-		// Ensure default is not chosen
-		let default_processor = PaymentProcessor {
+		// Should return fallback
+		let (key, breaker) = router.get_processor_for_payment().await.unwrap();
+		assert_eq!(key.name, "fallback");
+		assert_eq!(breaker.current_state(), State::Closed);
+	}
+
+	#[tokio::test]
+	async fn test_get_processor_for_payment_default_circuit_open_fallback_unhealthy()
+	{
+		let router = InMemoryPaymentRouter::default();
+		// Default is healthy, but its breaker is open
+		router.update_processor_health(PaymentProcessor {
 			key:               Arc::new(PaymentProcessorKey::new(
 				"default",
 				"http://default.com".into(),
 			)),
-			health:            HealthStatus::Failing, // Make default unhealthy
+			health:            HealthStatus::Healthy,
 			min_response_time: 50,
-		};
-		router.update_processor_health(default_processor.clone());
+		});
+		router.default_breaker.force_open();
 
-		let (key, breaker) = router.get_processor_for_payment().await.unwrap();
-		assert_eq!(key.url, fallback_processor.key.url);
-		assert_eq!(key.name, fallback_processor.key.name);
-		assert_eq!(breaker.current_state(), State::Closed);
+		// Fallback is unhealthy
+		router.update_processor_health(PaymentProcessor {
+			key:               Arc::new(PaymentProcessorKey::new(
+				"fallback",
+				"http://fallback.com".into(),
+			)),
+			health:            HealthStatus::Failing,
+			min_response_time: 50,
+		});
+
+		// Should return None
+		let result = router.get_processor_for_payment().await;
+		assert!(result.is_none());
 	}
 
 	#[tokio::test]
