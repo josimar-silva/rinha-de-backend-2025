@@ -1,0 +1,13 @@
+{
+  "name": "Josimar Silva",
+  "social": [
+    "https://josimar-silva.com",
+    "https://www.linkedin.com/in/josimar-silvx/",
+    "https://github.com/josimar-silva"
+  ],
+  "source-code-repo": "https://github.com/josimar-silva/rinha-de-backend-2025",
+  "langs": ["rust"],
+  "storages": ["redis"],
+  "messaging": [],
+  "load-balancers": ["nginx"]
+}
