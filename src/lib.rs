@@ -35,41 +35,42 @@ pub async fn run(
 
 	let http_client = Client::new();
 
-	info!("Starting health check worker...");
-
 	let in_memory_router = InMemoryPaymentRouter::new(
 		config.get_default_key(),
 		config.get_fallback_key(),
 	);
 
+	info!("Starting health check worker...");
 	tokio::spawn(processor_health_monitor_worker(
 		in_memory_router.clone(),
 		http_client.clone(),
 	));
 
-	info!("Starting payment processing worker...");
-	let payment_queue = PaymentQueue::new(Arc::clone(&redis));
-	let payment_repo = RedisPaymentRepository::new(Arc::clone(&redis));
+	let process_payment_use_case = ProcessPaymentUseCase::new(
+		RedisPaymentRepository::new(Arc::clone(&redis)).clone(),
+		http_client.clone(),
+	);
 
-	let process_payment_use_case =
-		ProcessPaymentUseCase::new(payment_repo.clone(), http_client.clone());
-
+	info!("Starting payment processing workers...");
 	for _ in 0..config.payment_processor_worker_count {
+		let redis_for_worker =
+			Arc::new(Redis::new(config.redis_url.as_ref()).await.unwrap());
+
 		tokio::spawn(payment_processing_worker(
-			payment_queue.clone(),
-			payment_repo.clone(),
+			PaymentQueue::new(Arc::clone(&redis_for_worker)),
+			RedisPaymentRepository::new(Arc::clone(&redis_for_worker)),
 			process_payment_use_case.clone(),
 			in_memory_router.clone(),
 		));
 	}
 
-	info!("Starting Actix-Web server on 0.0.0.0:9999...");
-
+	let payment_repo = RedisPaymentRepository::new(Arc::clone(&redis));
 	let payment_producer = MpscPaymentProducer::new(payment_sender);
 	let get_payment_summary_use_case =
 		GetPaymentSummaryUseCase::new(payment_repo.clone());
 	let purge_payments_use_case = PurgePaymentsUseCase::new(payment_repo.clone());
 
+	info!("Starting Actix-Web server on 0.0.0.0:9999...");
 	HttpServer::new(move || {
 		App::new()
 			.app_data(web::Data::new(

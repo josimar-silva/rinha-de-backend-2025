@@ -15,7 +15,11 @@ async fn test_run_bind_error() {
 	let redis = redis_container.get_redis().await;
 
 	let dummy_config = Arc::new(Config {
-		redis_url: "redis://127.0.0.1/".into(),
+		redis_url: format!(
+			"redis://{}",
+			redis_container.client.get_connection_info().addr
+		)
+		.into(),
 		default_payment_processor_url: "http://localhost:8080".into(),
 		fallback_payment_processor_url: "http://localhost:8081".into(),
 		server_keepalive: 60,
