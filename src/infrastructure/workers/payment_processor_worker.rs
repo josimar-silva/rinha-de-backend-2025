@@ -41,41 +41,45 @@ pub async fn payment_processing_worker<Q, PR, R>(
 
 		let payment: Payment = message.body.clone();
 
-		if let Ok(true) = payment_repo
+		if payment_repo
 			.is_already_processed(&payment.correlation_id.to_string())
 			.await
+			.unwrap_or(false)
 		{
 			info!("Payment already processed. Skipping it.");
 			continue;
 		}
 
 		let mut processed = false;
+		let mut attempts = 0;
 
-		if let Some((key, mut circuit_breaker)) =
-			router.get_processor_for_payment().await
-		{
-			if circuit_breaker.current_state() == State::Open {
-				if let Err(e) = queue.push(message).await {
-					error!("Failed to re-queue payment: {e}");
+		while !processed {
+			attempts += 1;
+
+			if let Some((key, mut circuit_breaker)) =
+				router.get_processor_for_payment(attempts).await
+			{
+				if circuit_breaker.current_state() == State::Open {
+					break;
 				}
-				sleep(Duration::from_millis(250)).await;
-				continue;
-			}
 
-			processed = process_payment_use_case
-				.execute(
-					payment.clone(),
-					key.url.to_string(),
-					key.name.to_string(),
-					&mut circuit_breaker,
-				)
-				.await
-				.unwrap_or(false);
+				processed = process_payment_use_case
+					.execute(
+						payment.clone(),
+						key.url.to_string(),
+						key.name.to_string(),
+						&mut circuit_breaker,
+					)
+					.await
+					.unwrap_or(false);
+			} else {
+				break;
+			}
 		}
 
 		if !processed {
 			warn!(
-				"Payment {} could not be processed by any processor. Re-queueing.",
+				"Payment {} could not be processed after all attempts. Re-queueing.",
 				payment.correlation_id
 			);
 			if let Err(e) = queue.push(message).await {

@@ -43,7 +43,7 @@ async fn test_payment_processing_worker_default_success() {
 	let fallback_key =
 		Arc::new(PaymentProcessorKey::new("fallback", fallback_url.into()));
 	let router =
-		InMemoryPaymentRouter::new(default_key.clone(), fallback_key.clone());
+		InMemoryPaymentRouter::new(default_key.clone(), fallback_key.clone(), 3);
 
 	// Set up processor health
 	let default_processor = PaymentProcessor {
@@ -125,7 +125,7 @@ async fn test_payment_processing_worker_fallback_success() {
 	let process_payment_use_case =
 		ProcessPaymentUseCase::new(payment_repo.clone(), http_client.clone());
 	let router =
-		InMemoryPaymentRouter::new(default_key.clone(), fallback_key.clone());
+		InMemoryPaymentRouter::new(default_key.clone(), fallback_key.clone(), 3);
 
 	// Set up processor health
 	let default_processor = PaymentProcessor {
@@ -207,7 +207,7 @@ async fn test_payment_processing_worker_requeue_message_given_processor_are_down
 		"http://non-existent-url:8080".into(),
 	));
 	let router =
-		InMemoryPaymentRouter::new(default_key.clone(), fallback_key.clone());
+		InMemoryPaymentRouter::new(default_key.clone(), fallback_key.clone(), 3);
 
 	// Set up processors to be failing
 	let default_processor = PaymentProcessor {
@@ -288,7 +288,7 @@ async fn test_payment_processing_worker_skip_processed_message() {
 	let process_payment_use_case =
 		ProcessPaymentUseCase::new(payment_repo.clone(), http_client.clone());
 	let router =
-		InMemoryPaymentRouter::new(default_key.clone(), fallback_key.clone());
+		InMemoryPaymentRouter::new(default_key.clone(), fallback_key.clone(), 3);
 
 	// Set up processor health
 	let default_processor = PaymentProcessor {
@@ -372,7 +372,7 @@ async fn test_payment_processing_worker_redis_failure() {
 		ProcessPaymentUseCase::new(payment_repo.clone(), http_client.clone());
 	let default_key = Arc::new(PaymentProcessorKey::new("default", "".into()));
 	let fallback_key = Arc::new(PaymentProcessorKey::new("fallback", "".into()));
-	let router = InMemoryPaymentRouter::new(default_key, fallback_key);
+	let router = InMemoryPaymentRouter::new(default_key, fallback_key, 3);
 
 	// Stop the redis container to simulate a connection failure
 	let _ = redis_container_instance.stop().await;
@@ -417,7 +417,7 @@ async fn test_payment_processing_worker_circuit_breaker_open() {
 	let process_payment_use_case =
 		ProcessPaymentUseCase::new(payment_repo.clone(), http_client.clone());
 	let router =
-		InMemoryPaymentRouter::new(default_key.clone(), fallback_key.clone());
+		InMemoryPaymentRouter::new(default_key.clone(), fallback_key.clone(), 3);
 
 	// Set up processors
 	let default_processor = PaymentProcessor {

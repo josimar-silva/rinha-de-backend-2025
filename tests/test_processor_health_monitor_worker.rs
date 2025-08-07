@@ -32,7 +32,7 @@ async fn test_update_processor_health_when_processor_is_reachable() {
 		.timeout(Duration::from_secs(2))
 		.build()
 		.unwrap();
-	let router = InMemoryPaymentRouter::new(default_key, fallback_key);
+	let router = InMemoryPaymentRouter::new(default_key, fallback_key, 3);
 
 	// Spawn the worker
 	let worker_handle = tokio::spawn(processor_health_monitor_worker(
@@ -77,7 +77,7 @@ async fn test_marks_processor_as_failing_when_unreachable() {
 	));
 
 	let router =
-		InMemoryPaymentRouter::new(default_key.clone(), fallback_key.clone());
+		InMemoryPaymentRouter::new(default_key.clone(), fallback_key.clone(), 3);
 
 	router.update_processor_health(PaymentProcessor {
 		key:               default_key,
@@ -130,7 +130,7 @@ async fn test_should_not_panic_an_error_occurs() {
 		"http://another-non-existent-fallback:8080".into(),
 	));
 	let router =
-		InMemoryPaymentRouter::new(default_key.clone(), fallback_key.clone());
+		InMemoryPaymentRouter::new(default_key.clone(), fallback_key.clone(), 3);
 
 	router.update_processor_health(PaymentProcessor {
 		key:               default_key,

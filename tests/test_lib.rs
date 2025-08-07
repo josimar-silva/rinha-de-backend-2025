@@ -25,6 +25,7 @@ async fn test_run_bind_error() {
 		server_keepalive: 60,
 		report_url: None,
 		payment_processor_worker_count: 4,
+		default_retry_count: 2,
 	});
 
 	// Create a dummy MPSC channel for the test

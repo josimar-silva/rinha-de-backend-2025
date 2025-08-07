@@ -38,6 +38,7 @@ pub async fn run(
 	let in_memory_router = InMemoryPaymentRouter::new(
 		config.get_default_key(),
 		config.get_fallback_key(),
+		config.default_retry_count,
 	);
 
 	info!("Starting health check worker...");
