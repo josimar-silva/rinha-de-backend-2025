@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use actix_web::{App, test, web};
+use async_trait::async_trait;
 use rinha_de_backend::adapters::web::handlers::payments_purge;
 use rinha_de_backend::domain::repository::PaymentRepository;
 use rinha_de_backend::infrastructure::persistence::redis_payment_repository::RedisPaymentRepository;
@@ -77,4 +78,65 @@ async fn test_payments_purge_returns_success() {
 		.unwrap();
 	assert!(!is_processed1_after_purge);
 	assert!(!is_processed2_after_purge);
+}
+
+#[derive(Clone)]
+struct MockPaymentRepository;
+
+#[async_trait]
+impl PaymentRepository for MockPaymentRepository {
+	async fn save(
+		&self,
+		_: Payment,
+	) -> Result<(), Box<dyn std::error::Error + Send>> {
+		Ok(())
+	}
+
+	async fn get_summary_by_group(
+		&self,
+		_: &str,
+		_: OffsetDateTime,
+		_: OffsetDateTime,
+	) -> Result<(usize, f64), Box<dyn std::error::Error + Send>> {
+		Ok((0, 0.0))
+	}
+
+	async fn get_payment_summary(
+		&self,
+		_: &str,
+		_: &str,
+	) -> Result<Payment, Box<dyn std::error::Error + Send>> {
+		unimplemented!()
+	}
+
+	async fn is_already_processed(
+		&self,
+		_: &str,
+	) -> Result<bool, Box<dyn std::error::Error + Send>> {
+		Ok(false)
+	}
+
+	async fn clear(&self) -> Result<(), Box<dyn std::error::Error + Send>> {
+		Err(Box::new(std::io::Error::other("Failed to clear payments")))
+	}
+}
+
+#[actix_web::test]
+async fn test_payments_purge_returns_error_on_failure() {
+	let mock_repository = MockPaymentRepository;
+	let purge_payments_use_case = PurgePaymentsUseCase::new(mock_repository);
+
+	let app = test::init_service(
+		App::new()
+			.app_data(web::Data::new(purge_payments_use_case.clone()))
+			.service(payments_purge),
+	)
+	.await;
+
+	let req = test::TestRequest::post()
+		.uri("/purge-payments")
+		.to_request();
+	let resp = test::call_service(&app, req).await;
+
+	assert!(resp.status().is_server_error());
 }
