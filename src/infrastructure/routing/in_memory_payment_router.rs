@@ -37,10 +37,10 @@ impl InMemoryPaymentRouter {
 				DefaultPolicy,
 				PaymentProcessingError,
 			>::builder()
-			.failure_threshold(0.1)
+			.failure_threshold(0.5)
 			.min_throughput(5)
-			.cooldown(Duration::from_secs(5))
-			.failure_threshold(1.0)
+			.probe_interval(10)
+			.cooldown(Duration::from_secs(3))
 			.build(),
 			fallback_breaker:   CircuitBreaker::<
 				DefaultPolicy,
