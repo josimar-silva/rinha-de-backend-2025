@@ -10,7 +10,7 @@ RUN cargo chef prepare --recipe-path recipe.json
 FROM chef AS release_chef
 
 COPY --from=planner /app/recipe.json recipe.json
-
+ENV RUSTFLAGS="-C target-cpu=skylake"
 ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
 
 RUN cargo chef cook --release --recipe-path recipe.json
