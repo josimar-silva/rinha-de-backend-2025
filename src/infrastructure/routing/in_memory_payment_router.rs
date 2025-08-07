@@ -46,7 +46,8 @@ impl InMemoryPaymentRouter {
 				DefaultPolicy,
 				PaymentProcessingError,
 			>::builder()
-			.cooldown(Duration::from_secs(5))
+			.failure_threshold(0.1)
+			.cooldown(Duration::from_secs(10))
 			.build(),
 		}
 	}
