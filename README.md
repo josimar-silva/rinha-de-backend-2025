@@ -54,19 +54,18 @@ It is designed to be robust and handle the instabilities of the payment processo
 
 ### Stack
 
-*   **Language:** Rust
-*   **Frameworks:** Actix Web, Tokio
-*   **Database/Queue:** Redis
-*   **Load Balancer:** Nginx
+*   **Language:** [Rust](https://www.rust-lang.org/learn)
+*   **Frameworks:** [Actix Web](https://actix.rs/)
+*   **Database/Queue:** [Redis](https://redis.io/docs/latest/develop/)
+*   **Load Balancer:** [Nginx](https://nginx.org/en/docs/http/load_balancing.html)
 
 ### Design
 
-TODO
+![C4 Component Diagram](docs/diagrams/c4-diagram.png)
 
 ### Performance results
 
-If you want to see the performance of this implementation and my notes on its
- performance, check the [perf.md](perf.md) file.
+If you want to see the performance of this implementation, check the [perf.md](perf.md) file.
 
 ## Running the Project
 
