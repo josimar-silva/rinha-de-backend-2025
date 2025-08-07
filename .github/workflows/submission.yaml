@@ -1,0 +1,41 @@
+name: Create Submission PR
+
+on: 
+  release:
+    types: [published]
+
+jobs:
+  create-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+
+      - name: Install PyYAML
+        run: pip install PyYAML
+
+      - name: Validate Docker Compose Resources
+        run: python scripts/validate_docker_compose.py
+
+      - name: Create PR to Rinha de Backend 2025
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.RINHA_REPO_PAT }}
+          path: rinha/participants/josimar-silva
+          add-paths:
+            - nginx.conf
+            - docs/submission/info.json
+            - docs/submission/README.md
+            - docs/submission/docker-compose.yaml
+          commit-message: 'feat: Add josimar-silva submission'
+          title: 'feat: Add josimar-silva submission'
+          body: 'This PR adds my submission for the Rinha de Backend 2025 challenge.'
+          branch: 'submission/josimar-silva'
+          base: 'main'
+          repository: 'zanfranceschi/rinha-de-backend-2025'
+          labels: | 
+            submission
+            josimar-silva
