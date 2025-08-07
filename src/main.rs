@@ -11,6 +11,9 @@ use rinha_de_backend::run;
 use rinha_de_backend::use_cases::create_payment::CreatePaymentUseCase;
 use tokio::sync::mpsc;
 
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
 	#[cfg(feature = "perf")]
