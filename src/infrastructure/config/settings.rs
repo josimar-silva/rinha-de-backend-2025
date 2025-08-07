@@ -14,6 +14,7 @@ pub struct Config {
 	pub server_keepalive: u64,
 	pub report_url: Option<Cow<'static, str>>,
 	pub payment_processor_worker_count: usize,
+	pub default_retry_count: u8,
 }
 
 impl Config {
@@ -66,6 +67,7 @@ mod tests {
 			env.insert("APP_SERVER_KEEPALIVE".into(), "120".into());
 			env.insert("APP_REPORT_URL".into(), "/tmp/reports".into());
 			env.insert("APP_PAYMENT_PROCESSOR_WORKER_COUNT".into(), "8".into());
+			env.insert("APP_DEFAULT_RETRY_COUNT".into(), "2".into());
 			env
 		}));
 
@@ -90,6 +92,7 @@ mod tests {
 		assert_eq!(config.server_keepalive, 120);
 		assert_eq!(config.report_url, Some(Cow::from("/tmp/reports")));
 		assert_eq!(config.payment_processor_worker_count, 8);
+		assert_eq!(config.default_retry_count, 2);
 	}
 
 	#[test]
@@ -110,6 +113,7 @@ mod tests {
 			);
 			env.insert("APP_SERVER_KEEPALIVE".into(), "120".into());
 			env.insert("APP_PAYMENT_PROCESSOR_WORKER_COUNT".into(), "4".into());
+			env.insert("APP_DEFAULT_RETRY_COUNT".into(), "2".into());
 			env
 		}));
 
@@ -128,6 +132,7 @@ mod tests {
 		assert_eq!(config.server_keepalive, 120);
 		assert_eq!(config.report_url, None);
 		assert_eq!(config.payment_processor_worker_count, 4);
+		assert_eq!(config.default_retry_count, 2);
 	}
 
 	#[test]

@@ -12,6 +12,7 @@ x-backend-template: &backend-template
     - APP_SERVER_KEEPALIVE=500
     - APP_REPORT_URL=/app/reports
     - APP_PAYMENT_PROCESSOR_WORKER_COUNT=4
+    - APP_DEFAULT_RETRY_COUNT=3
   deploy:
     resources:
       limits:
