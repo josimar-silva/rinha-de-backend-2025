@@ -1,4 +1,4 @@
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, RwLock, RwLockReadGuard};
 use std::time::Duration;
 
 use async_trait::async_trait;
@@ -63,6 +63,15 @@ impl InMemoryPaymentRouter {
 			_ => {}
 		}
 	}
+
+	fn can_process_payments(
+		payment_processor: &RwLockReadGuard<PaymentProcessor>,
+		circuit_breaker: &CircuitBreaker<DefaultPolicy, PaymentProcessingError>,
+	) -> bool {
+		payment_processor.health.is_healthy() &&
+			payment_processor.min_response_time < 100 &&
+			!matches!(circuit_breaker.current_state(), State::Open)
+	}
 }
 
 impl Default for InMemoryPaymentRouter {
@@ -83,34 +92,21 @@ impl PaymentRouter for InMemoryPaymentRouter {
 		CircuitBreaker<DefaultPolicy, PaymentProcessingError>,
 	)> {
 		let default_processor = self.default_processor.read().unwrap();
-		let default_breaker_is_open =
-			matches!(self.default_breaker.current_state(), State::Open);
-
-		if default_processor.health.is_healthy() &&
-			default_processor.min_response_time < 100 &&
-			!default_breaker_is_open
-		{
+		if Self::can_process_payments(&default_processor, &self.default_breaker) {
 			return Some((
 				default_processor.key.clone(),
 				self.default_breaker.clone(),
 			));
 		}
 
-		// Only consider fallback if the default's circuit breaker is open
-		if default_breaker_is_open {
-			let fallback_processor = self.fallback_processor.read().unwrap();
-			if fallback_processor.health.is_healthy() &&
-				fallback_processor.min_response_time < 100 &&
-				!matches!(self.fallback_breaker.current_state(), State::Open)
-			{
-				return Some((
-					fallback_processor.key.clone(),
-					self.fallback_breaker.clone(),
-				));
-			}
+		let fallback_processor = self.fallback_processor.read().unwrap();
+		if Self::can_process_payments(&fallback_processor, &self.fallback_breaker) {
+			return Some((
+				fallback_processor.key.clone(),
+				self.fallback_breaker.clone(),
+			));
 		}
 
-		// If default is just slow/unhealthy but the breaker is not open,
 		// return None to force a re-queue and wait for it to recover.
 		None
 	}
@@ -147,8 +143,7 @@ mod tests {
 	}
 
 	#[tokio::test]
-	async fn test_get_processor_for_payment_default_unhealthy_but_breaker_closed_waits()
-	 {
+	async fn test_get_processor_for_payment_default_unhealthy_but_breaker_closed() {
 		let router = InMemoryPaymentRouter::default();
 		// Default is unhealthy
 		router.update_processor_health(PaymentProcessor {
@@ -169,14 +164,13 @@ mod tests {
 			min_response_time: 50,
 		});
 
-		// Should return None to wait for default to recover, since its breaker is
-		// not open
-		let result = router.get_processor_for_payment().await;
-		assert!(result.is_none());
+		let (key, breaker) = router.get_processor_for_payment().await.unwrap();
+		assert_eq!(key.name, "fallback");
+		assert_eq!(breaker.current_state(), State::Closed);
 	}
 
 	#[tokio::test]
-	async fn test_get_processor_for_payment_default_slow_but_breaker_closed_waits() {
+	async fn test_get_processor_for_payment_default_slow_but_breaker_closed() {
 		let router = InMemoryPaymentRouter::default();
 		// Default is slow
 		router.update_processor_health(PaymentProcessor {
@@ -197,9 +191,9 @@ mod tests {
 			min_response_time: 50,
 		});
 
-		// Should return None to wait for default to recover
-		let result = router.get_processor_for_payment().await;
-		assert!(result.is_none());
+		let (key, breaker) = router.get_processor_for_payment().await.unwrap();
+		assert_eq!(key.name, "fallback");
+		assert_eq!(breaker.current_state(), State::Closed);
 	}
 
 	#[tokio::test]
