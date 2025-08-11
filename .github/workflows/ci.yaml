@@ -16,7 +16,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: 📦 Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: ✅ Check
         uses: actions-rs/cargo@v1
@@ -39,7 +39,7 @@ jobs:
         with:
           components: clippy
       - name: 📦 Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: 🔍 Check the lints
         uses: actions-rs/cargo@v1
         with:
@@ -60,7 +60,7 @@ jobs:
         with:
           components: rustfmt
       - name: 📦 Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: 📝 Check the formatting
         uses: actions-rs/cargo@v1
         with:
@@ -78,13 +78,13 @@ jobs:
 
       - name: 📦 Checkout
         if: github.event_name != 'pull_request'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: 📦 Checkout
         if: github.event_name == 'pull_request'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
