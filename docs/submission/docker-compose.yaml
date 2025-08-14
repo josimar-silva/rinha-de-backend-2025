@@ -44,13 +44,13 @@ services:
 
   backend-01:
     <<: *backend-template
-    image: ghcr.io/josimar-silva/rinha-de-backend-2025:0.5.0
+    image: ghcr.io/josimar-silva/rinha-de-backend-2025:0.5.1
     hostname: backend-01
     container_name: rinha-backend-01
 
   backend-02:
     <<: *backend-template
-    image: ghcr.io/josimar-silva/rinha-de-backend-2025:0.5.0
+    image: ghcr.io/josimar-silva/rinha-de-backend-2025:0.5.1
     hostname: backend-02
     container_name: rinha-backend-02
 
