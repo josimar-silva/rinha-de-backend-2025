@@ -55,7 +55,7 @@ services:
     container_name: rinha-backend-02
 
   redis:
-    image: redis:8.2.0-alpine
+    image: redis:8.2.1-alpine
     hostname: redis
     container_name: rinha-redis
     command: redis-server --save "" --appendonly no --maxclients 20000
