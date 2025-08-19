@@ -134,7 +134,6 @@ impl PaymentRepository for RedisPaymentRepository {
 		let mut con = self.redis.connection.as_ref().clone();
 
 		let payment_key = format!("payment_summary:{group}:{payment_id}");
-		log::debug!("Retrieving payment summary for key: {}", payment_key);
 		let payment_data: Option<std::collections::HashMap<String, String>> =
 			con.hgetall(&payment_key).await.ok();
 
